@@ -1,6 +1,17 @@
 
 This is change file for RayApp.
 
+1.145 Fri May 28 21:15:09 CEST 2004
+	RayApp: When .html file exists, it is sent as is.
+	RayApp::mod_perl: Added binmode to STDOUT. Fixed handling of
+		status.
+
+1.140 Tue Jan 27 21:56:21 CET 2004
+	RayApp: Caching of DSDs, applications, and XSLT stylesheets
+		made mtime aware.
+	RayApp::CGI: Improved URI translation handling.
+	RayApp::mod_perl: Adds no-cache headers.
+
 1.136 Fri Jan 23 19:32:25 CET 2004
 	RayApp: added the cache parameter and
 	execute_application_cgi method.

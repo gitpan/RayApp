@@ -1,26 +1,11 @@
 
-package RayApp::mod_perl::TieSTDOUT;
-
-sub TIEHANDLE {
-	my ($class, $data) = @_;
-	return bless $data, $class;
-}
-sub PRINT {
-	my $self = shift;
-	push @$self, @_;
-}
-sub PRINTF {
-	my $self = shift;
-	push @$self, sprintf @_;
-}
-
-
-package RayApp::mod_perl;
+package RayApp::mod_perl_Storable;
 
 use RayApp ();
 use Apache::Response ();
-use Apache::Const -compile => qw(OK SERVER_ERROR DECLINED);
+use Apache::SubProcess ();
 use APR::Table ();
+use Apache::Const -compile => qw(OK SERVER_ERROR);
 use strict;
                                                                                 
 sub print_errors (@) {
@@ -45,17 +30,12 @@ sub handler {
 	if (not defined $uri) {
 		$uri = $ENV{'SCRIPT_FILENAME'};
 	}
-	if ($uri =~ m!/$!  and defined $ENV{'RAYAPP_DIRECTORY_INDEX'}) {
+	if ($uri =~ m!/$! and defined $ENV{'RAYAPP_DIRECTORY_INDEX'}) {
 		$uri .= $ENV{'RAYAPP_DIRECTORY_INDEX'};
 	}
 
 	my $err_in_browser = ( defined $ENV{'RAYAPP_ERRORS_IN_BROWSER'}
 		and $ENV{'RAYAPP_ERRORS_IN_BROWSER'} );
-
-	if ($uri =~ /\.html$/ and -f $uri) {
-		$r->filename($uri);
-		return Apache::DECLINED;
-	}
 
 	$rayapp = new RayApp( 'cache' => 1 ) if not defined $rayapp;
 
@@ -125,84 +105,19 @@ sub handler {
 			return Apache::SERVER_ERROR;
 		}
 	}
-	my @params;
-	if (defined $ENV{'RAYAPP_INPUT_MODULE'}) {
-		eval "use $ENV{'RAYAPP_INPUT_MODULE'};";
-		if ($@) {
-			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to load input module, sorry.\n";
-			print_errors "Error loading [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
-				$@, $err_in_browser;
-			return Apache::SERVER_ERROR;
-		}
 
-		my $handler = "$ENV{'RAYAPP_INPUT_MODULE'}::handler";
-		{
-		no strict;
-		eval { @params = &{ $handler }($dsd, $r); };
-		}
-		if ($@) {
-			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to run input module, sorry.\n";
-			print_errors "Error executing [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
-				$@, $err_in_browser;
-			return Apache::SERVER_ERROR;
+	my ($data, $style_params);
+	for ('RAYAPP_INPUT_MODULE', 'RAYAPP_STYLE_PARAMS_MODULE') {
+		if (defined $ENV{$_}) {
+			$r->subprocess_env->set($_ => $ENV{$_})
 		}
 	}
-	my @style_params;
-	if (defined $ENV{'RAYAPP_STYLE_PARAMS_MODULE'}) {
-		eval "use $ENV{'RAYAPP_STYLE_PARAMS_MODULE'};";
-		if ($@) {
-			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to load style params module, sorry.\n";
-			print_errors "Error loading [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
-				$@, $err_in_browser;
-			return Apache::SERVER_ERROR;
-		}
-
-		my $handler = "$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}::handler";
-		{
-		no strict;
-		eval { @style_params = &{ $handler }($dsd, @params); };
-		}
-		if ($@) {
-			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to run style params module, sorry.\n";
-			print_errors "Error executing [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
-				$@, $err_in_browser;
-			return Apache::SERVER_ERROR;
-		}
-	}
-
-	my $tied = tied *STDOUT;
-	my @stdout_data;
-	my $data;
-	my $err;
-
-	{
-		local *STDOUT;
-		binmode STDOUT, ':bytes';
-		tie *STDOUT, 'RayApp::mod_perl::TieSTDOUT', \@stdout_data;
-
-		eval { $data = $rayapp->execute_application_handler_reuse($application, @params) };
-		$err = $@;
-		if ($tied) {
-			tie *STDOUT, $tied;
-		} else {
-			untie *STDOUT;
-		}
-	}
-	for (@params) {
-		if (defined $_ and ref $_ and $_->can('disconnect')) {
-			eval { $_->rollback; };
-			eval { $_->disconnect; };
-		}
-	}
-	if ($err) {
+	eval { $data = $rayapp->execute_application_process_storable($application, $dsd->{'uri'}) };
+	if ($@) {
 		$r->content_type('text/plain');
 		print "Broken RayApp setup, failed to run the application, sorry.\n";
 		print_errors "Error executing [$application]\n",
-			$err, $err_in_browser;
+			$@, $err_in_browser;
 		return Apache::SERVER_ERROR;
 	}
 
@@ -215,15 +130,15 @@ sub handler {
 	}
 
 	if (not ref $data) {
-		# handler already sent the response itself, we've got it
-		# in @stdout_data
-		$r->status($data);
-		$r->send_cgi_header(join '', @stdout_data);
+		# handler already sent the response itself
+		$r->send_cgi_header($data);
 		return Apache::OK;
 	}
 
-	$r->headers_out->{'Pragma'} = 'no-cache';
-	$r->headers_out->{'Cache-control'} = 'no-cache';
+	if (ref $data eq 'ARRAY') {
+		$style_params = [ @{ $data }[ 1 .. $#$data ] ];
+		$data = $data->[0];
+	}
 
 	if (not @stylesheets) {
 		my $output = $dsd->serialize_data($data, { RaiseError => 0 });
@@ -240,9 +155,8 @@ sub handler {
 	} else {
 		my ($output, $media, $charset) = $dsd->serialize_style($data,
 			{
-				'rayapp' => $rayapp,
-				( scalar(@style_params)
-					? ( style_params => \@style_params )
+				( scalar(@$style_params)
+					? ( style_params => $style_params )
 					: () ),
 				RaiseError => 0,
 			},

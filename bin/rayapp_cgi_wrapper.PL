@@ -10,7 +10,7 @@ if (not defined $filename) {
 open OUT, ">$filename" or die "Can't create $filename: $!";
 chmod(0755, $filename);
 
-print OUT "$Config{'startperl'} -w -CSDA\n";
+print OUT "$Config{'startperl'} -w\n";
 
 print OUT <<'EOF'
 

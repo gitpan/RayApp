@@ -3,7 +3,7 @@ package RayApp;
 use strict;
 use URI::file ();
 
-$RayApp::VERSION = '1.136';
+$RayApp::VERSION = '1.145';
 
 sub new {
 	my $class = shift;
@@ -22,6 +22,18 @@ sub load_dsd {
 	my ($self, $uri) = @_;
 	$self->{errstr} = undef;
 	$uri = URI->new_abs($uri, $self->{base});
+	if (defined $self->{'cache'}
+		and $self->{'cache'}
+		and defined $self->{uris}{$uri}
+		and ($uri =~ m!^file://(/.+)$!
+			or $uri =~ m!^file:(/[^/].+)$!)) {
+		my $filename = $1;
+		my ($mtime) = (stat $filename)[9];
+		if (defined $self->{uris}{$uri}{'mtime'}
+			and $self->{uris}{$uri}{'mtime'} == $mtime) {
+			return $self->{uris}{$uri};
+		}
+	}
 
 	my $ret = eval {
 		my $dsd = $self->load_dsd_uri($uri);
@@ -51,14 +63,11 @@ sub load_user_agent {
 use Digest::MD5 ();
 sub load_dsd_uri {
 	my ($self, $uri) = @_;
-	if (defined $self->{'cache'} and $self->{'cache'}
-		and defined $self->{uris}{$uri}) {
-		return $self->{uris}{$uri};
-	}
 	if (not defined $self->{ua}) {
 		$self->load_user_agent();
 	}
 	my $response = $self->{ua}->get($uri);
+
 	if ($response->is_error) {
 		if (defined $response->{_msg}) {
 			die $response->{_msg} . "\n";
@@ -69,6 +78,7 @@ sub load_dsd_uri {
 		'uri' => $uri,
 		'content' => $response->content,
 		'md5_hex' => Digest::MD5::md5_hex($response->content),
+		'mtime' => $response->last_modified,
 		};
 }
 
@@ -199,7 +209,7 @@ sub parse_dsd {
 		}
 	}
 
-	return $self->{uris}{$dsd->{uri}} = $dsd;
+	return $self->{'uris'}{$dsd->{'uri'}} = $dsd;
 }
 
 my %DATA_ATTRIBUTES = (
@@ -342,8 +352,11 @@ sub execute_application_handler_reuse {
 			die "Application name was not defined\n";
 		}
 		my $handler;
-		if (defined $self->{handlers}{$application}) {
-			### print STDERR "Not loading\n";
+		my $mtime = (stat $application)[9];
+		if (defined $self->{handlers}{$application}
+			and defined $self->{handlers}{$application}{mtime}
+			and $self->{handlers}{$application}{mtime} == $mtime) {
+			# print STDERR "Not loading\n";
 			$handler = $self->{handlers}{$application}{handler};
 		} else {        
 			$handler = $application;
@@ -367,6 +380,7 @@ sub execute_application_handler_reuse {
 				or die "Compiling `$application' did not return true value\n";
 			$self->{handlers}{$application} = {
 				handler => $handler,
+				mtime => $mtime,
 			};
 		}
 		no strict;
@@ -382,10 +396,12 @@ sub execute_application_handler_reuse {
 	return $ret;
 }
 
+use Config;
 sub execute_application_process_storable {
-	my ($self, $application) = @_;
+	my ($self, $application, $dsd_uri) = @_;
 	$self->{errstr} = undef;
 	if (ref $application) {
+		$dsd_uri = $application->{'uri'};
 		$application = $application->application_name;
 	}       
 	my $ret = eval {
@@ -394,12 +410,13 @@ sub execute_application_process_storable {
 		}
 		require Storable;
 		my $inc = join ' ', map "-I$_", @INC;   
-		my $value = `$^X $inc -MRayApp::CGIStorable $application`;
-		if ($value =~ s!^Content-Type: application/x-perl-storable\n\n!!) {
+
+		my $value = `$Config{'perlpath'} $inc -MRayApp::CGIStorable $application $dsd_uri`;
+		if ($value =~ s!^Content-Type: application/x-perl-storable.*\n\n!!s) {
 			my $data = Storable::thaw($value);
 			return $data;
 		}
-		return;
+		return $value;
 	};
 	if ($@) {
 		print STDERR $@;
@@ -1088,21 +1105,35 @@ sub serialize_style_dom {
 		return;
 	}
 
-	my $rayapp = $self->{rayapp};
+	my $rayapp = delete $opts->{rayapp};
 
 	my $style;
-	for my $stylesheet (@_) {
-		$style = $rayapp->{stylesheets}{$stylesheet};
+	for my $st (@_) {
+		my $stylesheet = URI->new_abs($st,
+			( defined $self->{'uri'}
+				?  $self->{'uri'}
+				: $rayapp->{'base'} ));
+		$stylesheet =~ s!^file:(//)?!!;
+		my $mtime = (stat $stylesheet)[9];
+		if (defined $rayapp
+			and $rayapp->{'cache'}
+			and defined $rayapp->{stylesheets_mtime}{$stylesheet}
+			and $rayapp->{stylesheets_mtime}{$stylesheet} == $mtime) {
+			$style = $rayapp->{stylesheets}{$stylesheet};
+		}
 		if (not defined $style) {
 			my $xslt = $rayapp->{xsltparser};
 			if (not defined $xslt) {
 				$xslt = $rayapp->{xsltparser} = new XML::LibXSLT;
 			}
-			$rayapp->{stylesheets}{$stylesheet} = $style
-				= eval { $xslt->parse_stylesheet_file($stylesheet) };
+			$style = eval { $xslt->parse_stylesheet_file($stylesheet) };
 			if ($@ or not defined $style) {
 				$self->{'errstr'} = $@;
 				return;
+			}
+			if (defined $rayapp and $rayapp->{'cache'}) {
+				$rayapp->{stylesheets}{$stylesheet} = $style;
+				$rayapp->{stylesheets_mtime}{$stylesheet} = $mtime;
 			}
 		}
 		$outdom = eval { $style->transform($outdom, @style_params) };
@@ -1119,10 +1150,22 @@ sub serialize_style_dom {
 		if (defined $style) {
 			my $out = $style->output_string($outdom);
 			if (${^UNICODE}) {
-				return Encode::decode('utf8', $out,	
+				if (wantarray) {
+					return Encode::decode('utf8', $out,	
+							Encode::FB_DEFAULT),
+						$style->media_type,
+						$style->output_encoding;
+				} else {
+					return Encode::decode('utf8', $out,	
 							Encode::FB_DEFAULT);
+				}
 			} else {
-				return $out;
+				if (wantarray) {
+					return $out, $style->media_type,
+						$style->output_encoding;
+				} else {
+					return $out;
+				}
 			}
 		} else {
 			return;
@@ -1156,8 +1199,6 @@ sub validate_parameters {
 			push @{ $params{$k} }, $v;
 		}
 	}
-
-	# use Data::Dumper; print STDERR Dumper \%params;
 
 	for my $k (sort keys %params) {
 		my $check = $self->{param}{$k};
@@ -1337,23 +1378,26 @@ RayApp - Framework for data-centric Web applications
 
 The B<RayApp> provides a framework for data-centric Web applications.
 Instead of writing Perl code that prints HTML, or embedding the code
-inside of HTML markup, the applications only process and return Perl
-data. No markup handling is done in the code of individual
-application, inside of the business logic.
+inside of HTML markup, the Web applications only process and return
+Perl data. No markup handling is done in the code of individual
+application, inside of the business logic. This reduces the
+presentation noise in individual applications, increases
+maintainability and speeds development.
 
-The data output is then serialized to XML, and postprocessed by XSLT
-to desired output format, which may be HTML, XHTML, WML or anything
-else. In order to provide all parties involved (application
+The data returned by the application is then serialized to XML and
+postprocessed by XSLT to desired output format, which may be HTML,
+XHTML, WML or anything else.
+In order to provide all parties involved (analysts, application
 programmers, Web designers, ...) with a common specification of the
 data format, data structure description (DSD) file is a mandatory part
 of the applications. The data returned by the Perl code is fitted into
 the data structure, creating XML file with agreed-on elements.
 
-This way, application programmer knows what data is expected from
-their application, and Web designer knows what XMLs the
-prostprocessing stage will be dealing with. In addition, application
-code can be tested separately from the presentation part, and tests
-for both application and presentation part can be written
+This way, application programmers know what data is expected from
+their applications and Web designers know what XMLs the
+prostprocessing stage will be dealing with, in advance. In addition,
+application code can be tested separately from the presentation part,
+and tests for both application and presentation part can be written
 independently, in parallel.
 
 Of course, the data structure description can change if necessary, it
@@ -1362,224 +1406,207 @@ can use the old DSD file and regression tests to easily migrate to the
 new structure. This change in DSD leads to change in the DOCTYPE of
 the resulting XML and is thus easily detected by the external parties.
 The system will never produce unexpected data output, since the data
-output is based on DSD which is known in advance.
+output is based on DSD which is known.
 
-=head1 DESCRIPTION
+=head1 CONFIGURATION
 
-=head2 RayApp object
+Most of the use of RayApp approach is expected in the Web context.
+This section summarizes configuration steps needed for the Apache
+HTTP server.
 
-To work with B<RayApp> and have it process data structure description
-files, application data and transformation, you need a B<RayApp> object
-first. Use contructor B<new> to create one:
+Assume you have a Web application that should reside on URL
 
-	use RayApp;
-	my $rayapp = new RayApp;
+	http://server/sub/app.html
 
-The constructor takes a couple of parameters that affect its
-behaviour:
+The application consists of three files:
+
+	/cont/www/app.dsd
+	/cont/www/app.pl
+	/cont/www/app.xsl
+
+Whenever a request for /sub/appl.html comes, the DSD
+/cont/www/app.dsd is to be loaded, app.pl executes and the output
+serialized to HTML with app.xsl. You will need to configure Apache to
+do these steps for you and generate the HTML on the fly.
+
+=head2 Pure mod_perl approach
+
+If you have a mod_perl support in your Apache and want to use it to
+run you B<RayApp>-based applications, the following setup will give
+you the correct result:
+
+	Alias /sub/ /cont/www/
+	<LocationMatch /sub/.*\.(html|xml)$/>
+		SetHandler perl-script
+		PerlResponseHandler RayApp::mod_perl
+	</LocationMatch>
+
+The Alias directive ensures that the DSD and Perl code will be
+correctly found in the /cont/www/ directory. The same result can be
+achieved by setting B<RAYAPP_DIRECTORY> environment variable without
+specifying Alias:
+
+	<LocationMatch /sub/.*\.(html|xml)$/>
+		SetEnv RAYAPP_DIRECTORY /cont/www
+		SetHandler perl-script
+		PerlResponseHandler RayApp::mod_perl
+	</LocationMatch>
+
+Make sure that in this case you include all necessary directives here
+in the LocationMatch section. Without the Alias, no potential
+
+	<Directory /cont/www/>
+	...
+	</Directory>
+
+sections will be taken into account.
+
+There are some more environment variables that are recognized by
+B<RayApp>:
 
 =over 4
 
-=item base
+=item RAYAPP_INPUT_MODULE
 
-The base URI, used for all URI resolutions.
+Specifies name of module whose B<handler> function will be invoked
+for each request. It can be used to do any initial setup which is
+reasonable to do outside of the code of individual Web applications,
+like checking permitted parameters or connecting to database sources. 
+The array of return values of this handler will be passed to the
+application's B<handler>. That way, the applications can be sure they
+will always get their $q, $r, $dbh values populated and ready.
 
-=item cache
+=item RAYAPP_STYLE_PARAMS_MODULE
 
-When set to true value, will cache loaded DSD's and stylesheets.
+Specifies name of module whose B<handler> function should return hash
+of parameters that will be passed to the XSLT transformations.
 
-=item ua_options
+=item RAYAPP_ERRORS_IN_BROWSER
 
-Options that will be send to LWP::UserAgent constructor. See LWP
-documentation for exact list.
-
-=back
-
-A constructor call might look like
-
-	my $rayapp = new RayApp (
-		base => 'file:///path/sub/',
-		ua_options => {
-			env_proxy => 1,
-			timeout => 30,
-			},
-	);
-
-Should the B<new> call fail, error message can be found in the
-B<$RayApp::errstr> variable.
-
-Once you have the B<RayApp> object, use B<load_dsd> or
-B<load_dsd_string> methods to load a document structure description
-(DSD). These methods give you a B<RayApp::DSD> object which accept
-further method calls.
-
-Parameters of these calls are as follows.
-
-=over 4
-
-=item load_dsd
-
-The only parameter is URL of the DSD file. If you specify a relative
-URL, it will be resolved relative to the base URI of the B<RayApp>
-object.
-
-	my $dsd = $rayapp->load_dsd('invoice.dsd');
-	my $dsd = $rayapp->load_dsd('file:///path/to/invoice.dsd');
-
-=item load_dsd_string
-
-For B<load_dsd_string>, the DSD is specified as the sole parameter of
-the method call:
-
-	my $dsd = $rayapp->load_dsd_string('<?xml version="1.0"?>
-		<invoice>
-			<num type="int"/>
-			<data typeref="invoice_data.dsd"/>
-		</invoice>
-	')
+When set to true (default is false), any internal parsing, execution
+or styling error will be shown in the output page, besides going
+to error_log.
 
 =back
 
-If the B<load_dsd> or B<load_dsd_string> call fails for whatever
-reason, it returns undef and the error message can be retrieved
-using B<errstr> method of B<RayApp>:
+=head2 CGI approach
 
-	my $dsd = $ra->load_dsd('data.xml')
-		or die $ra->errstr;
+You may not have mod_perl installed on your machine. Or you do not
+want to use it in you Apache. In that case, B<RayApp> can be invoked
+in CGI manner. With the layout mentioned above, the configuration
+will be
 
-=head2 RayApp::DSD object
+	ScriptAliasMatch ^/sub/(.+)\.(html|xml)$ /cont/www/$1.pl
+	<Location /sub/>
+		SetEnv PERL5OPT -MRayApp::CGIWrapper
+	</Location>
 
-The incoming parameters of the CGI request can be checked
-against the B<_param> specification included in the DSD, using the
-B<validate_parameters>. It is designed to seamlessly accept hash
-(array) of parameters or a CGI/Apache::Request-compatible object, and
-fetch the parameters from it. The method returns true when all
-parameters match the DSD, false otherwise. On error, B<errstr> method
-of the B<RayApp::DSD> object gives the reason.
+Essentially, any request for .html or .xml will be mapped to run
+the .pl application, with B<RayApp::CGIWrapper> helper module
+providing all the transformations behind the scenes. This layout
+assumes that the applications are always next to the DSD files
+with the .pl extensions. In addition, the applications have to have
+the executable bit set and start with correct #! line.
+
+Alternatively, the B<rayapp_cgi_wrapper> script (included in the
+B<RayApp> distribution) can be used to run B<RayApp> applications
+in CGI mode with the following configuration:
+
+	ScriptAliasMatch ^/sub/(.+\.(html|xml))$	\
+			/usr/bin/rayapp_cgi_wrapper/$1
+	<Location /sub/>
+		SetEnv RAYAPP_DIRECTORY /cont/www
+	</Location>
+
+As with he recipe above, the mod_perl B<RAYAPP_DIRECTORY> has to be
+specified to correctly resolve the URI -> file translation. In this
+case, the applications can be without the x bit and without the #!
+line.
+
+=head2 The applications
+
+Having the Web server set up, you can write your first application
+in B<RayApp> manner. For start, a simplistic application which only
+returns two values will be enough.
+
+First the DSD file, B</cont/www/app.dsd>:
+
+	<?xml version="1.0"?>
+	<root>
+		<_param name="name"/>
+		<name/>
+		<time/>
+	</root>
+
+The application will accept one parameter, B<name> and will return
+hash with two values, B<name> and B<time>. The code can be
+
+	use CGI;
+	sub handler {
+		my $q = new CGI;
+		return {
+			name => $q->param('name'),
+			time => time,
+		};
+	}
+	1;
+
+The application returns a hash with two elements. A request for
+
+	http://server/sub/app.xml?name=Peter
+
+should return
+
+	<?xml version="1.0"?>
+	<root>
+		<name>Peter</name>
+		<time>1075057209</time>
+	</root>
+
+Adding the B</cont/www/app.xsl> file with XSLT templates should be
+easy now.
+
+Of course, you can also run the application on the command line, but
+you'll have to use the B<RayApp::CGIWrapper> module, since you
+application (B<app.pl>) only defined the B<handler> function, nothing
+more:
+
+	$ perl -MCGI=-debug -MRayApp::CGIWrapper app.dsd
+
+The B<-MCGI=-debug> is here to force debuggin input on standard input.
+
+As using CGI and calling
 
 	my $q = new CGI;
-	if (not $dsd->validate_parameters($q)) {
-		# ... $dsd->errstr
+
+in each of your applications is a bit boring, you can create an
+initialization module, for example CGIInit.pm:
+
+	package CGIInit;
+	use CGI;
+	sub handler {
+		return (new CGI);
 	}
-	
-	$dsd->validate_parameters('id' => 1, 'id' => 2,
-		'name' => 'PC', 'search' => 'Search')
-		or # ...
+	1;
 
-From the DSD, the document type definition (DTD) can be derived,
-providing DOCTYPE of the resulting data. Use method B<get_dtd> to
-receive DTD as a string.
+The application code will change to (app.pl):
 
-	my $dtdstring = $dsd->get_dtd;
+	sub handler {
+		my $q = shift;
+		return {
+			name => $q->param('name'),
+			time => time,
+		};
+	}
+	1;
 
-The most important action that can be done with a B<RayApp::DSD>
-object is serialization of data returned by the application,
-according to the DSD. Method B<serialize_data> accepts hash with data
-as its first argument, and optionally secont argument with options
-driving the serialization. The method returns the output XML string.
+and setting RAYAPP_INPUT_MODULE=CGIInit on the command line or
+SetEnv RAYAPP_INPUT_MODULE CGIInit in the Apache configuration file
+will make sure all B<RayApp> applications' handlers will get the
+proper parameters. Database handlers are another targets for this
+centralized initialization.
 
-	my $xml = $dsd->serialize_data({
-		id => 14,
-		name => 'Peter'
-		});
-
-Alternatively, a method B<serialize_data_dom> can be used which
-behaves identically, only returning the DOM instead of the string.
-That may be benefitial if the result is immediatelly postprocessed
-using Perl tools, saving one parse call.
-
-The supported serialization options are:
-
-=over 4
-
-=item RaiseError
-
-By default it is true (1), resulting in an exception whenever
-a serialization error occurs. This behavior may be switched off by
-setting the parameter to zero. In that case the result is returned
-even if the data did not match the DSD exactly (which may lead to the
-output XML not matching its DOCTYPE). Use B<errstr> to verify that the
-serialization was without errors.
-
-	my $dom = $dsd->serialize_data_dom({
-		people => [ { id => 2, name => 'Bob' },
-			{ id => 31, name => 'Alice' } ]
-		}, { RaiseError => 0 });
-
-=item doctype
-
-This value will be used as a SYSTEM identifier of the DOCTYPE.
-
-=item doctype_ext
-
-The SYSTEM identifier will be derived from the URI of the DSD bych
-changing extension to this string.
-
-	my $xml = $dsd->serialize_data({}, { doctype_ext => '.dtd' });
-
-The DOCTYPE will be included in the resulting XML only if one of the
-B<doctype> or B<doctype_ext> options are used.
-
-=item validate
-
-The resulting XML is serialized to XML and parsed back while being
-validated against the DTD derived from the DSD. Set this option to
-true to enable this extra safe bahaviour.
-
-	my $dom = $dsd->serialize_data_dom({
-		numbers => [ 13.4, 3, 45 ],
-		rows => $dbh->selectall_arrayref($sth)
-		}, { validate => 1 });
-
-=back
-
-Serialized data (the resulting XML) can be immediatelly postprocessed
-with B<serialize_style> or B<serialize_style_dom> methods. They take
-the same arguments as B<serialize_data>, but each additional argument
-is considered to be a URI of a XSLT stylesheet. The stylesheets will
-be applied to the output XML in the order in which they are specified.
-
-	my $html = $dsd->serliaze_style({
-		found => { 1 => 'x', 45 => 67 }
-		}, { RaiseError => 0 },
-		'generic.xslt',
-		'finetune.xslt',
-		);
-
-=head2 Executing application handlers
-
-The B<RayApp> object, besides access to the B<load_dsd*> methods,
-provides methods of executing application handlers, either using the
-B<Apache::Registry> style inside of the calling Perl/mod_perl
-environment, or using external CGI scripts.
-
-Method B<execute_application_handler> (and its reusing companion
-B<execute_application_handler_reuse>) of B<RayApp> object take 
-a single parameter with a file/URL of the Perl handler, or
-a B<RayApp::DSD> object. The application code is loaded (or reused)
-and a method B<handler> is invoked.
-The data then can be passed directly to the B<serialize*> methods
-of B<RayApp::DSD> object.
-
-	$dsd = $rayapp->load_dsd($uri);
-	my $data = $rayapp->execute_application_handler($dsd);
-	# my $data = $rayapp->execute_application_handler('script.pm');
-	$dsd->serialize_style($data, {}, 'stylesheet.xsl');
-
-When the B<RayApp::DSD> is passed as an argument, the application name
-is derived the standard way, from the B<application> attribute of the
-root element of the DSD.
-
-Any additional parameters to B<execute_application*> methods are
-passed over to the handler methods of the loaded application.
-
-The application can also be invoked in a separate process, using
-B<execute_application_process_storable> method. The data of the
-application is then stored using B<RayApp::CGIStorable> module and
-transferred back to B<RayApp> using application's standard output
-handle.
-
-=head1 The DSD
+=head1 DATA STRUCTURE DESCRIPTION (DSD)
 
 The data structure description file is a XML file. Its elements either
 form the skeleton of the output XML and are copied to the output, or
@@ -1626,9 +1653,12 @@ B<integer> for integer values, B<num> and B<number> for numerical
 values, and the default B<string> for generic string values.
 
 Note that the type on parameters should only be used for input data
-that will never be directly enterred by the application, either for
+that will never be directly entered by the user, either for
 machine-to-machine communication, or for values in HTML forms that
-come from menus or checkboxes.
+come from menus or checkboxes. If you need to check that the user
+specified their age as a number, use the type string and application
+code to retrieve the correct data or return with request for more
+correct input.
 
 =back
 
@@ -1655,7 +1685,7 @@ data binded to them. The allowed attributes of placeholders are:
 =item type
 
 Type of the placeholder. Except the scalar types which are the same as
-for input parameters, B<hash> or B<struct> value can be used to denote
+for input parameters, B<hash> or B<struct> values can be used to denote
 nested structure.
 
 =item mandatory
@@ -1744,17 +1774,247 @@ The root element of the DSD can hold an B<application> attribute with
 a URL (file name) of the application which should provide the data for
 the DSD.
 
+=head1 DESCRIPTION OF INTERNALS
+
+In the previous parts we have seen how to use B<RayApp> to write Web
+applications. Changes are that you will want to use B<RayApp>
+serializer in other, non-Web projects. This part describes the
+internals of the framework.
+
+=head2 RayApp object
+
+To work with B<RayApp> and to have it process data structure description
+files, application data, and presentation transformation, you need
+a B<RayApp> object first. Use contructor B<new> to create one:
+
+	use RayApp ();
+	my $rayapp = new RayApp;
+
+The constructor takes a couple of optional parameters that affect
+B<RayApp>'s behaviour:
+
+=over 4
+
+=item base
+
+The base URI, used for all URI resolutions. By default, the current
+directory is used.
+
+=item cache
+
+When set to true value, will cache loaded DSD's and stylesheets.
+False by default.
+
+=item ua_options
+
+Options that will be send to B<LWP::UserAgent> constructor. See
+B<LWP> documentation for exact list.
+
+=back
+
+A constructor call might look like
+
+	my $rayapp = new RayApp (
+		base => 'file:///path/sub/',
+		cache => 1,
+		ua_options => {
+			env_proxy => 1,
+			timeout => 30,
+			},
+	);
+
+Should the B<new> call fail, error message can be found in the
+B<$RayApp::errstr> variable.
+
+Once you have the B<RayApp> object, use B<load_dsd> or
+B<load_dsd_string> methods to load a document structure description
+(DSD). Parameters of these methods are as follows.
+
+=over 4
+
+=item load_dsd
+
+The only parameter is URL of the DSD file. If you specify a relative
+URL, it will be resolved relative to the base URI of the B<RayApp>
+object.
+
+	my $dsd = $rayapp->load_dsd('invoice.dsd');
+	my $dsd = $rayapp->load_dsd('file:///path/to/invoice.dsd');
+
+=item load_dsd_string
+
+For B<load_dsd_string>, the DSD is specified as the sole parameter of
+the method call:
+
+	my $dsd = $rayapp->load_dsd_string('<?xml version="1.0"?>
+		<invoice>
+			<num type="int"/>
+			<data typeref="invoice_data.dsd"/>
+		</invoice>
+	')
+
+=back
+
+If the B<load_dsd> or B<load_dsd_string> fails for whatever
+reason, it returns undef and the error message can be retrieved
+using B<errstr> method of B<RayApp>:
+
+	my $dsd = $ra->load_dsd('data.xml')
+		or die $ra->errstr;
+
+On success, these methods give you a B<RayApp::DSD> object that
+accepts further method calls. 
+
+=head2 RayApp::DSD object
+
+The incoming parameters of the CGI request can be checked
+against the B<_param> specification included in the DSD, using the
+B<validate_parameters>. It is designed to seamlessly accept hash
+(array) of parameters or a B<CGI> / B<Apache::Request> /
+B<Apache::RequestRec> -compatible object, and
+fetch the parameters from it. The method returns true when all
+parameters match the DSD, false otherwise. On error, B<errstr> method
+of the B<RayApp::DSD> object gives the reason.
+
+	my $q = new CGI;
+	if (not $dsd->validate_parameters($q)) {
+		# ... $dsd->errstr
+	}
+	
+	$dsd->validate_parameters('id' => 1, 'id' => 2,
+		'name' => 'PC', 'search' => 'Search')
+		or # ...
+
+From the DSD, the document type definition (DTD) can be derived,
+providing DOCTYPE of the resulting data. Use method B<get_dtd> to
+receive DTD as a string.
+
+	my $dtdstring = $dsd->get_dtd;
+
+The most important action that can be done with a B<RayApp::DSD>
+object is serialization of data returned by the application,
+according to the DSD. Method B<serialize_data> accepts hash with data
+as its first argument, and optionally secont argument with options
+driving the serialization. The method returns the output XML string.
+
+	my $xml = $dsd->serialize_data({
+		id => 14,
+		name => 'Peter'
+		});
+
+Alternatively, a method B<serialize_data_dom> can be used which
+behaves identically, only returning the DOM instead of the string.
+That may be benefitial if the result is immediatelly postprocessed
+using Perl tools, saving one parse call.
+
+The supported serialization options are:
+
+=over 4
+
+=item RaiseError
+
+By default it is true (1), resulting in an exception whenever
+a serialization error occurs. This behavior may be switched off by
+setting the parameter to zero. In that case the result is returned
+even if the data did not match the DSD exactly (which may lead to the
+output XML not matching its DOCTYPE). Use B<errstr> to verify that the
+serialization was without errors.
+
+	my $dom = $dsd->serialize_data_dom({
+		people => [ { id => 2, name => 'Bob' },
+			{ id => 31, name => 'Alice' } ]
+		}, { RaiseError => 0 });
+	if ($dsd->errstr) { # ...
+
+=item doctype
+
+This value will be used as a SYSTEM identifier of the DOCTYPE.
+
+=item doctype_ext
+
+The SYSTEM identifier will be derived from the URI of the DSD by
+changing extension to this string.
+
+	my $xml = $dsd->serialize_data({}, { doctype_ext => '.dtd' });
+
+The DOCTYPE will be included in the resulting XML only if one of the
+B<doctype> or B<doctype_ext> options are used.
+
+=item validate
+
+The resulting XML is serialized to XML and parsed back while being
+validated against the DTD derived from the DSD. Set this option to
+true to enable this extra safe bahaviour.
+
+	my $dom = $dsd->serialize_data_dom({
+		numbers => [ 13.4, 3, 45 ],
+		rows => $dbh->selectall_arrayref($sth)
+		}, { validate => 1 });
+
+=back
+
+Serialized data (the resulting XML) can be immediatelly postprocessed
+with B<serialize_style> or B<serialize_style_dom> methods. They take
+the same arguments as B<serialize_data>, but each additional argument
+is considered to be a URI of a XSLT stylesheet. The stylesheets will
+be applied to the output XML in the order in which they are specified.
+
+	my $html = $dsd->serliaze_style({
+		found => { 1 => 'x', 45 => 67 }
+		}, { RaiseError => 0 },
+		'generic.xslt',
+		'finetune.xslt',
+		);
+
+In scalar context, the result of the transformations is returned.
+In an array context, the result is returned as the first element,
+followed by the media type (a.k.a. content type) and encoding
+(a.k.a. charset) of the output.
+
+=head2 Executing application handlers
+
+The B<RayApp> object, besides access to the B<load_dsd*> methods,
+provides methods of executing application handlers, either using the
+B<Apache::Registry> style inside of the calling Perl/mod_perl
+environment, or using external CGI scripts.
+
+Method B<execute_application_handler> (and its reusing companion
+B<execute_application_handler_reuse>) of B<RayApp> object take 
+a single parameter with a file/URL of the Perl handler, or
+a B<RayApp::DSD> object. The application code is loaded (or reused)
+and a method B<handler> is invoked.
+The data then can be passed directly to the B<serialize*> methods
+of B<RayApp::DSD> object.
+
+	$dsd = $rayapp->load_dsd($uri);
+	my $data = $rayapp->execute_application_handler($dsd);
+	# my $data = $rayapp->execute_application_handler('script.pm');
+	$dsd->serialize_style($data, {}, 'stylesheet.xsl');
+
+When the B<RayApp::DSD> is passed as an argument, the application name
+is derived the standard way, from the B<application> attribute of the
+root element of the DSD.
+
+Any additional parameters to B<execute_application*> methods are
+passed over to the handler methods of the loaded application.
+
+The application can also be invoked in a separate process, using
+B<execute_application_process_storable> method. The data of the
+application is then stored using B<RayApp::CGIStorable> module and
+transferred back to B<RayApp> using application's standard output
+handle.
+
 =head1 SEE ALSO
 
 LWP::UserAgent(3), XML::LibXML(3)
 
 =head1 AUTHOR
 
-Copyright (c) Jan Pazdziora 2001--2003
+Copyright (c) Jan Pazdziora 2001--2004
 
 =head1 VERSION
 
 This documentation is believed to describe accurately B<RayApp>
-version 1.120.
+version 1.145.
 
 

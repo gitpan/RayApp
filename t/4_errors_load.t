@@ -339,7 +339,7 @@ like($extout, '/Status: 500
 Content-Type: text\/plain
 
 Broken RayApp setup, failed to load DSD, sorry\.
-Loading DSD \[nonwellformed\.xml\] failed: Entity: line 6: error: Opening and ending tag mismatch: a line 4 and b/',
+Loading DSD \[nonwellformed\.xml\] failed: .*6:.* Opening and ending tag mismatch: a line 4 and b/',
 	'Check');
 
 

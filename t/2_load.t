@@ -27,6 +27,10 @@ ok($dsd = $rayapp->load_dsd("simple1.xml"),
 	'Loading correct DSD simple1.xml');
 is($rayapp->errstr, undef, 'Checking that there was no error');
 
+ok($dsd = $rayapp->load_dsd("simple1.xml"),
+	'Loading for the second time');
+is($rayapp->errstr, undef, 'Checking that there was no error');
+
 like($dsd->uri, '/^file:.*simple1.xml$/', 'Checking URI of the DSD');
 is($dsd->md5_hex, 'a9eaba3064593944b9141aee064585cf',
 	'Checking MD5 of the DSD');
@@ -1998,6 +2002,8 @@ is($dsd->errstr, undef, 'Check errstr');
 $ENV{RAYAPP_DIRECTORY} = Cwd::getcwd();
 my $extout = `$^X ../blib/script/rayapp_cgi_wrapper script2.dsd`;
 is($extout, 'Status: 200
+Pragma: no-cache
+Cache-control: no-cache
 Content-Type: text/xml
 
 <?xml version="1.0" standalone="yes"?>
@@ -2050,6 +2056,8 @@ Content-Type: text/xml
 
 $extout = `../blib/script/rayapp_cgi_wrapper script2.dsd`;
 is($extout, 'Status: 200
+Pragma: no-cache
+Cache-control: no-cache
 Content-Type: text/xml
 
 <?xml version="1.0" standalone="yes"?>
@@ -2100,7 +2108,9 @@ Content-Type: text/xml
 $ENV{RAYAPP_HTML_STYLESHEETS} = 'script1.xsl';
 $extout = `../blib/script/rayapp_cgi_wrapper script1.html`;
 is($extout, 'Status: 200
-Content-Type: text/html; charset=utf-8
+Pragma: no-cache
+Cache-control: no-cache
+Content-Type: text/html; charset=UTF-8
 
 <html>
 <head>
@@ -2131,7 +2141,9 @@ Study program:
 $ENV{RAYAPP_HTML_STYLESHEETS} = 'script1.xsl';
 $extout = `../blib/script/rayapp_cgi_wrapper script2.html`;
 is($extout, 'Status: 200
-Content-Type: text/html; charset=utf-8
+Pragma: no-cache
+Cache-control: no-cache
+Content-Type: text/html; charset=UTF-8
 
 <html>
 <head>

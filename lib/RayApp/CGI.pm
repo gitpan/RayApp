@@ -1,9 +1,8 @@
 
 package RayApp::CGI;
 
-use RayApp;
+use RayApp ();
 use strict;
-
 
 sub print_errors (@) {
 	my $err_in_browser = pop;
@@ -14,41 +13,61 @@ sub print_errors (@) {
 }
 
 sub handler {
-
-	# print STDERR map "$_=$ENV{$_}\n", sort keys %ENV;
-
 	my $uri;
 	if (@ARGV) {
 		$uri = shift @ARGV;
-	} else {
+	} elsif (defined $ENV{'RAYAPP_DIRECTORY'}) {
 		$uri = $ENV{'RAYAPP_DIRECTORY'};
-		if (defined $uri and defined $ENV{'PATH_INFO'}) {
-			$uri .= $ENV{'PATH_INFO'};
-		} elsif (defined $ENV{'RAYAPP_STRIP_URI_START'}
-			and defined $ENV{'REQUEST_URI'}
-			and index($ENV{'REQUEST_URI'},  $ENV{'RAYAPP_STRIP_URI_START'}) == 0) {
-			$uri .= substr($ENV{'REQUEST_URI'}, length($ENV{'RAYAPP_STRIP_URI_START'}));
-			$uri =~ s/\?.*//;
-		} elsif (defined $ENV{'SCRIPT_FILENAME'}) {
-			$uri = $ENV{'SCRIPT_FILENAME'};
-		} else {
-			$uri = $0;
-			if ($uri =~ s/\.(mpl|pl)$//) {
-				for my $ext ('.dsd', '.xml') {
-					if (-f $uri . $ext) {
-						$uri .= $ext;
-						last;
-					}
-				}
-				
+		$uri .= $ENV{'PATH_INFO'} if defined $ENV{'PATH_INFO'};
+		$ENV{'SCRIPT_NAME'} = $ENV{'REQUEST_URI'};
+		delete $ENV{'PATH_INFO'};
+		$ENV{'PATH_TRANSLATED'} = $uri;
+	} else {
+		$uri = $ENV{'SCRIPT_FILENAME'};
+		if (defined $uri and defined $ENV{'SCRIPT_NAME'}) {
+			my ($fnameext) = ($uri =~ /\.(.+?)$/);
+			my ($nameext) = ($ENV{'SCRIPT_NAME'} =~ /\.(.+?)$/);
+			if ($fnameext ne $nameext) {
+				$uri =~ s/\..+?$/.$nameext/;
 			}
 		}
 	}
+	if (not defined $uri) {
+		$uri = $0;
+		if ($uri =~ s/\.(mpl|pl)$//) {
+			for my $ext ('.dsd', '.xml') {
+				if (-f $uri . $ext) {
+					$uri .= $ext;
+					last;
+				}
+			}
+		}
+	}
+        ### if (($uri =~ m!/$! or -d $uri)
+        if ($uri =~ m!/$! and defined $ENV{'RAYAPP_DIRECTORY_INDEX'}) {
+                ### $uri .= '/' unless $uri =~ m!/$!;
+                $uri .= $ENV{'RAYAPP_DIRECTORY_INDEX'};
+        }
 
-	# print STDERR "[$uri]\n";
+
+	# print STDERR "Called RayApp::CGI with uri [$uri]\n";
 
 	my $err_in_browser = ( defined $ENV{'RAYAPP_ERRORS_IN_BROWSER'}
 		and $ENV{'RAYAPP_ERRORS_IN_BROWSER'} );
+
+	if ($uri =~ /\.html$/ and -f $uri) {
+		local *FILE;
+		open FILE, $uri or do {
+			print_errors "Error reading [$uri]: $!\n", $err_in_browser;
+			print "Status: 404\n\n";
+			exit;
+		};
+		local $/ = undef;
+		print "Status: 200\nContent-Type: text/html\n\n";
+		print <FILE>;
+		close FILE;
+		exit;
+	}
 
 	my $rayapp = new RayApp;
 
@@ -197,9 +216,11 @@ sub handler {
 				$dsd->errstr, "\n", $err_in_browser;
 			exit;
 		}
-		print "Status: 200\nContent-Type: text/xml\n\n", $output;
+		print "Status: 200\n";
+		print "Pragma: no-cache\nCache-control: no-cache\n";
+		print "Content-Type: text/xml\n\n", $output;
 	} else {
-		my $output = $dsd->serialize_style($data,
+		my ($output, $media, $charset) = $dsd->serialize_style($data,
 			{
 				( scalar(@style_params)
 					? ( style_params => \@style_params )
@@ -215,15 +236,16 @@ sub handler {
 				$dsd->errstr, "\n", $err_in_browser;
 			exit;
 		}
-		my $content_type = $ENV{'RAYAPP_STYLED_CONTENT_TYPE'};
-		if (not defined $content_type) {
-			if (defined $type and $type eq 'html') {
-				$content_type = 'text/html; charset=utf-8';
-			} else {
-				$content_type = 'text/plain; charset=utf-8';
+		print "Status: 200\n";
+		if (defined $media) {
+			if (defined $charset) {
+				$media .= "; charset=$charset";
 			}
+			print "Pragma: no-cache\nCache-control: no-cache\n";
+			print "Content-Type: $media\n\n";
 		}
-		print "Status: 200\nContent-Type: $content_type\n\n", $output;
+		print $output;
+		exit;
 	}
 	exit;
 }
