@@ -8,8 +8,6 @@ use Apache::Const qw(OK);
 use Apache::Connection ();
 use APR::SockAddr ();
 
-use base 'RayApp::Request';
-
 sub new {
 	my ($class, $r) = @_;
 	$r->add_input_filter(\&_storage_filter);
@@ -113,27 +111,7 @@ sub referer {
 	shift->{'r'}->headers_in->{'Referer'};
 }
 sub url {
-	my $self = shift;
-	my $r = $self->{'r'};
-	my $uri = $r->headers_in->{'X-RayApp-Frontend-URI'};
-	if (not defined $uri) {
-		$uri = $self->{r}->construct_url;
-	}
-	my %opts = @_;
-	my $out = $self->parse_full_uri($uri, %opts);
-	if ($opts{'query'} or $opts{'-query'}) {
-		my $query = $self->{r}->args;
-		if ($query ne '') {
-			$out .= "?$query";
-		}
-	}
-	return $out;
-}
-sub url_orig {
-	my $self = shift;
-	my $uri = '';
-
-	my $r = $self->{'r'};
+	my $r = shift->{'r'};
 	my %opts = @_;
 	for (keys %opts) {
 		if (/^-/) {
@@ -142,6 +120,8 @@ sub url_orig {
 			$opts{$updated} = delete $opts{$_};
 		}
 	}
+
+	my $uri = '';
 
 	if (not keys %opts) {
 		$opts{'full'} = 1;
@@ -197,44 +177,6 @@ sub remote_addr {
 }
 sub body {
 	shift->{r}->pnotes('rayapp_raw_body');
-}
-
-sub upload {
-	my $self = shift;
-	my $r = $self->{'r'};
-
-	my @params = @_;
-	if (not @params) {
-	}
-
-	require RayApp::Request::Upload;
-	my @out;
-	for my $param (@params) {
-		if (defined $self->{uploads}{$param}) {
-			push @out, @{ $self->{uploads}{$param} };
-			next;
-		}
-		for my $u ($r->upload($param)) {
-			my $filename = $u->filename;
-			my $fh = $u->filehandle;
-			my $content = join '', <$fh>;
-			close $fh;
-                        my $u = new RayApp::Request::Upload(
-                                filename => $filename,
-                                # filehandle => $_,
-                                # content_type => $info->{'Content-Type'},
-                                content => $content,
-                                name => $param,
-                        );
-                        push @{ $self->{uploads}{$param} }, $u;
-                        push @out, $u;
-		}
-	}
-	if (wantarray) {
-		@out;
-	} else {
-		$out[0];
-	}
 }
 
 1;

@@ -1,11 +1,14 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         RayApp
-version:      1.148
+version:      1.165
 version_from: lib/RayApp.pm
 installdirs:  site
 requires:
     CGI:                           0
+    Encode:                        0
+    IO::ScalarArray:               0
+    IPC::Open3:                    0
     POSIX:                         0
     strict:                        0
     Test::More:                    0

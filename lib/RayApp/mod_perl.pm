@@ -1,293 +1,541 @@
 
 package RayApp::mod_perl;
 
-use RayApp ();
-use Apache::Response ();
-use Apache::RequestRec ();
-use Apache::Const -compile => qw(OK SERVER_ERROR DECLINED NOT_FOUND);
-use APR::Table ();
-use Apache::RequestIO ();
-
-use IO::ScalarArray ();
 use strict;
-                                                                                
-sub print_errors (@) {
-	my $err_in_browser = pop;
-	if ($err_in_browser) {
-		print @_;
-	}
-	print STDERR @_;
-}
+use warnings;
+
+use Apache::Const -compile => qw(
+	OK SERVER_ERROR DECLINED NOT_FOUND REDIRECT
+	:log
+	);
+use Apache::Log ();
+use APR::Const    -compile => qw(:error SUCCESS);
+use Apache::RequestIO ();
+use Apache::RequestRec ();
+use Apache::RequestUtil ();
+use APR::Table ();
+use Apache::Response ();
+use Apache::URI ();
+
+use RayApp ();
+use IO::ScalarArray;
+use URI ();
+
+	# #############################################################
+	# All the RayApp's actions are driven by the extension
+	# (suffix). Supported outputs include:
+	#
+	#	.xml		Runs application, serializes output
+	#	.html		Runs application and then does XSLT
+	#			transformation using .xsl (.html.xsl,
+	#			.xslt, .html.xslt) stylesheet
+	#	.txt		Runs applications and then does XSLT
+	#			transformation using .txt.xsl
+	#			stylesheet
+	#	.fo		Runs applications and then does XSLT
+	#			transformation using .fo.xsl
+	#	.pdf, .ps	Same as .fo but executes external
+	#			command (fop) to get the desired
+	#			output
+	#
+	# Running the application requires finding a .dsd, loading it,
+	# running input module which sets environment for the
+	# application code, then finding the .mpl (.pl) application
+	# file which is supposed to have a handler() function, running
+	# it with parameters returned by the input module, and
+	# serializing the output of the application (Perl hash) to the
+	# DSD forming XML.
+	#
+	# If however a .xml file is found, it is used instead of
+	# fiddling with .dsd and running the .mpl.
+	# #############################################################
 
 my $rayapp;
 sub handler {
+
+	# This is run as PerlResponseHandler, so the first argument
+	# is Apache::RequestRec
+
 	my $r = shift;
 
-	my $uri = $r->filename();
-
-	if ($uri =~ m!/$! and defined $ENV{'RAYAPP_DIRECTORY_INDEX'}) {
-		$uri .= $ENV{'RAYAPP_DIRECTORY_INDEX'};
+	$rayapp = new RayApp if not defined $rayapp;
+	my $caching = $r->dir_config('RayAppCache');
+	if (defined $caching
+		and $caching ne 'no'
+		and $caching ne 'none') {
+		$rayapp->cache($caching);
 	}
 
-	if ($uri =~ /\.html$/ and -f $uri) {
-		$r->filename($uri);
-		return Apache::DECLINED;
+	my ($ext);
+
+	my $uri = $r->uri();		# we just use uri for logging
+	my $filename = $r->filename();
+	my ($xml, $dom, @params);
+	my %stylesheets_params;
+
+	my ($translate, $translate_source);
+	if ($translate = $r->dir_config('RayAppURIProxy')) {
+		$translate_source = $r->uri;
+	} elsif ($translate = $r->dir_config('RayAppPathInfoProxy')) {
+		$translate_source = $r->path_info;
 	}
-
-	my $err_in_browser = ( defined $ENV{'RAYAPP_ERRORS_IN_BROWSER'}
-		and $ENV{'RAYAPP_ERRORS_IN_BROWSER'} );
-
-	$rayapp = new RayApp( 'cache' => 1 ) if not defined $rayapp;
-
-	my ($type, $dsd, $data, @stylesheets, @style_params);
-	if ($uri =~ /\.xml$/ and -f $uri) {
-		$r->filename($uri);
-		$dsd = $rayapp->load_xml($uri) or do {
-			$r->content_type('text/plain');
-			$r->print("Broken RayApp setup, XML not available, sorry.\n");
-			print_errors "Reading XML [$uri] failed: ",
-				$rayapp->errstr, "\n", $err_in_browser;
-			return Apache::SERVER_ERROR;
-		};
-	} else {
-		if ($uri =~ s/\.(xml|html|txt|pdf|fo)$//) {
-			$type = $1;
-			for my $ext ('.dsd') {
-				if (-f $uri . $ext) {
-					$uri .= $ext;
-					last;
-				}
-			}
-			
-			if ($type eq 'html'
-				and defined $ENV{'RAYAPP_HTML_STYLESHEETS'}) {
-				@stylesheets = split /:/, $ENV{'RAYAPP_HTML_STYLESHEETS'};
-			} elsif ($type eq 'txt'
-				and defined $ENV{'RAYAPP_TXT_STYLESHEETS'}) {
-				@stylesheets = split /:/, $ENV{'RAYAPP_TXT_STYLESHEETS'};
-			} elsif (($type eq 'pdf' or $type eq 'fo')
-				and defined $ENV{'RAYAPP_FO_STYLESHEETS'}) {
-				@stylesheets = split /:/, $ENV{'RAYAPP_FO_STYLESHEETS'};
-			}
-			if ($type ne 'xml' and not @stylesheets) {
-				my $styleuri = $uri;
-				$styleuri =~ s/\.[^\.]+$//;
-				@stylesheets = RayApp::find_stylesheet($styleuri, $type);
+	if (defined $translate) {
+		if ($translate_source =~ m!/$!) {
+			my $index = $r->dir_config('RayAppDirectoryIndex');
+			if (defined $index) {
+				$translate_source .= $index;
 			}
 		}
+		my $path_info = $r->path_info;
+		my $uri = $r->uri();
+		my $location = $r->location();
 
-		$dsd = $rayapp->load_dsd($uri);
-		if (not defined $dsd) {
-			if (not -f $uri) {
-				return Apache::NOT_FOUND;
-			}
+		# $r->log_error("Kicking in translate [$translate] uri [$uri] filename [$filename] path info [$path_info] location [$location]");
+
+		my $load_uri;
+#		if ($path_info eq '') {
+#			my $location = $r->location();
+#			my $uri = $r->uri();
+#			if ($location ne ''
+#				and substr($uri, 0, length($location))
+#							eq $location) {
+#				$load_uri = substr($uri, length($location));
+#				$r->log_error(" * changing path_info");
+#			}
+#		}
+
+		# $r->log_error(" + will translate [$translate_source]");
+		my ($left, $right) = split /\s+/, $translate, 2;
+		if (not defined $left or not defined $right) {
 			$r->content_type('text/plain');
-			$r->print("Broken RayApp setup, failed to load DSD, sorry.\n");
-			print_errors "Loading DSD [$uri] failed: ",
-				$rayapp->errstr, "\n", $err_in_browser;
+			$r->print("Failed to proxy to backend for [$uri]\n");
+			$r->log_error("RayApp::mod_perl: uri [$uri] proxy [$translate] not valid");
 			return Apache::SERVER_ERROR;
 		}
-		my $application = $dsd->application_name;
-		if (not defined $application) {
-			my $appuri = $uri;
-			$appuri =~ s/\.[^\.]+$//;
-			my $ok = 0;
-			for my $ext ('.pl', '.mpl', '.xpl') {
-				if (-f $appuri . $ext) {
-					$application = $appuri . $ext;
-					$ok = 1;
-					last;
-				}
-			}
-			if (not $ok) {
-				$r->content_type('text/plain');
-				$r->print("Broken RayApp setup, failed to find application, sorry.\n");
-				return Apache::SERVER_ERROR;
-			}
+		if ($translate_source =~ m!\.([^./]+)$!) {
+			$ext = $1;	# this tells us postprocessing type
 		}
-		my @params;
-		if (defined $ENV{'RAYAPP_INPUT_MODULE'}) {
-			eval "use $ENV{'RAYAPP_INPUT_MODULE'};";
-			if ($@) {
-				$r->content_type('text/plain');
-				$r->print("Broken RayApp setup, failed to load input module, sorry.\n");
-				print_errors "Error loading [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
-					$@, $err_in_browser;
-				return Apache::SERVER_ERROR;
-			}
-
-			my $handler = "$ENV{'RAYAPP_INPUT_MODULE'}::handler";
-			{
-			no strict;
-			eval { @params = &{ $handler }($dsd, $r); };
-			}
-			if ($@) {
-				$r->content_type('text/plain');
-				$r->print("Broken RayApp setup, failed to run input module, sorry.\n");
-				print_errors "Error executing [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
-					$@, $err_in_browser;
-				return Apache::SERVER_ERROR;
-			}
-		}
-		if (defined $ENV{'RAYAPP_STYLE_PARAMS_MODULE'}) {
-			eval "use $ENV{'RAYAPP_STYLE_PARAMS_MODULE'};";
-			if ($@) {
-				$r->content_type('text/plain');
-				$r->print("Broken RayApp setup, failed to load style params module, sorry.\n");
-				print_errors "Error loading [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
-					$@, $err_in_browser;
-				return Apache::SERVER_ERROR;
-			}
-
-			my $handler = "$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}::handler";
-			{
-			no strict;
-			eval { @style_params = &{ $handler }($dsd, @params); };
-			}
-			if ($@) {
-				$r->content_type('text/plain');
-				$r->print("Broken RayApp setup, failed to run style params module, sorry.\n");
-				print_errors "Error executing [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
-					$@, $err_in_browser;
-				return Apache::SERVER_ERROR;
-			}
-		}
-
-		my $tied = tied *STDOUT;
-		my @stdout_data;
-		my $err;
-
-		{
-			local *STDOUT;
-			binmode STDOUT, ':bytes';
-			tie *STDOUT, 'IO::ScalarArray', \@stdout_data;
-
-			eval { $data = $rayapp->execute_application_handler_reuse($application, @params) };
-			$err = $@;
-			if ($tied) {
-				tie *STDOUT, $tied;
+		my @parens = ($translate_source =~ /$left/);
+		$load_uri = $right;
+		$load_uri =~ s/(\\.|\$(\d+))/
+			if ($1 eq '\$') {
+				'\$';
+			} elsif ($1 eq '$0') {
+				'$0';
 			} else {
-				untie *STDOUT;
+				$parens[ $2 - 1 ];
+			}
+			/ge;
+		# $r->log_error("   > got [$load_uri]");
+
+		my $request_uri = $r->construct_url;
+
+		$load_uri = URI->new_abs($load_uri, $r->construct_url);
+
+		my %post_opts;
+		my $pass_args = $r->dir_config('RayAppProxyParams');
+		if (not defined $pass_args or lc($pass_args) eq 'yes') {
+			if ($r->method eq 'POST') {
+				my $body = '';
+				while ($r->read(my $b, 1024)) {
+					$body .= $b;
+				}
+				$post_opts{post_body} = $body;
+				$post_opts{post_content_type} = $r->headers_in->{'Content-Type'};
+			} else {
+				if ($r->args ne '') {
+					$load_uri .= '?' . $r->args;
+				}
 			}
 		}
-		for (@params) {
-			if (defined $_ and ref $_ and $_->can('disconnect')) {
-				eval { $_->rollback; };
-				eval { $_->disconnect; };
-			}
-		}
-		if ($err) {
-			$r->content_type('text/plain');
-			$r->print("Broken RayApp setup, failed to run the application, sorry.\n");
-			print_errors "Error executing [$application]\n",
-				$err, $err_in_browser;
-			return Apache::SERVER_ERROR;
-		}
+		# $r->log_error("   > constructed base [$request_uri] loading [$load_uri]");
+		$r->log_error("RayApp::mod_perl proxy [$uri] to [$load_uri] in pid $$");
 
-		if (not ref $data and $data eq '500') {
-			$r->content_type('text/plain');
-			$r->print("Broken RayApp setup, failed to run the application, sorry.\n");
-			print_errors "Error executing [$application]\n",
-				$rayapp->errstr, $err_in_browser;
-			return Apache::SERVER_ERROR;
+		if (not defined $ext or $ext eq 'xml') {
+			$xml = $rayapp->load_uri($load_uri,
+					method => $r->method,
+					want_404 => 1,
+					%post_opts,
+				) or do {
+				$r->print("Failed to proxy to backend for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] proxy [$translate] failed: " . $rayapp->errstr);
+				return Apache::SERVER_ERROR;
+			};
+		} else {
+			$xml = $rayapp->load_xml($load_uri,
+					method => $r->method,
+					want_404 => 1,
+					frontend_ext => $ext,
+					frontend_uri => $request_uri,
+					%post_opts,
+				) or do {
+				$r->content_type('text/plain');
+				$r->print("Failed to proxy to backend for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] proxy [$translate] failed: " . $rayapp->errstr);
+				return Apache::SERVER_ERROR;
+			};
 		}
+		if (defined $xml->redirect_location) {
+			$r->status($xml->status);
+			$r->headers_out->{Location} = $xml->redirect_location;
+			$r->content_type($xml->content_type);
 
-		if (not ref $data) {
-			# handler already sent the response itself, we've got it
-			# in @stdout_data
-			$r->status($data);
-			$r->send_cgi_header(join '', @stdout_data);
+			$r->print( $xml->content );
 			return Apache::OK;
 		}
+		if ($xml->status eq '404') {
+			# $r->notes->set('error-notes', "Testing");
+			$r->log_error("Returning data backend's 404");
+			return Apache::NOT_FOUND;
+		}
+		if ($xml->stylesheet_params) {
+			%stylesheets_params = $xml->stylesheet_params;
+		}
 	}
 
-	if (not @stylesheets) {
-		my $output;
-		if (ref $dsd eq 'HASH') {
-			$output = $dsd->{content};
-		} else {
-			$output = $dsd->serialize_data($data, { RaiseError => 0 });
-			if ($dsd->errstr) {
+	else {
+
+		# If the handler was invoked and Alias is in action, we will
+		# get the requested file name here.
+
+		if (not defined $filename) {
+			# Otherwise we decline because we do not know where
+			# the DSD is expected to be.
+
+			# FIXME: we might have some own resolution mechanism
+			# though
+
+			return Apache::DECLINED;
+		}
+
+		if ($filename =~ m!/$!) {
+			# If the request is for a directory, let's find
+			# the DSD that should handle the directory
+
+			# FIXME: shouldn't we always use DirectoryIndex
+			# and let Apache do the lookup for us? Probably not
+			# since the resouce we look for will not exist.
+
+			my $index = $r->dir_config('RayAppDirectoryIndex');
+
+			if (not defined $index) {
+				# We did not find a way to get decent URI
+
+				$r->log_error("No RayAppDirectoryIndex");
+				return Apache::DECLINED;
+			}
+			$filename .= $index;
+			$r->filename($filename);
+		}
+
+		if (-f $filename) {
+			# If the file exists on the filesystem, we just return
+			# it.
+
+			$r->log_error("RayApp::mod_perl: info: serving local file [$filename] for [$uri] in pid $$");
+			$r->filename($filename);
+			return Apache::DECLINED;
+		}
+
+		my $stripped_filename = $filename;
+		$stripped_filename =~ s!\.([^./]+)$!! and $ext = $1;
+
+		if (-f $stripped_filename . '.xml') {
+			# We found XML file -- we will use this static file
+			# instead of running the application
+
+			$filename = $stripped_filename . '.xml';
+			$r->filename($filename);
+
+			$xml = $rayapp->load_xml($filename);
+			if (not defined $xml) {
 				$r->content_type('text/plain');
-				$r->print("Broken RayApp setup, data serialization failed, sorry.\n");
-				print_errors "Serialization failed for [$0]: ",
-					$dsd->errstr, "\n", $err_in_browser;
+				$r->print("Failed to load data for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] filename [$filename] error " . $rayapp->errstr);
+				return Apache::SERVER_ERROR;
+			};
+		} else {
+			my $dsd_filename;
+			if (defined $ext) {
+				$dsd_filename = $stripped_filename . '.dsd';
+			} else {
+				$dsd_filename = $filename . '.dsd';
+			}
+			if (not -f $dsd_filename) {
+				$r->log_error("RayApp::mod_perl: uri [$uri] filename [$filename] no DSD [$dsd_filename]");
+				return Apache::NOT_FOUND;
+			}
+
+			$xml = $rayapp->load_dsd($dsd_filename);
+			if (not defined $xml) {
+				$r->content_type('text/plain');
+				$r->print("Failed to load output specification for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] error " . $rayapp->errstr);
 				return Apache::SERVER_ERROR;
 			}
-			$r->headers_out->{'Pragma'} = 'no-cache';
-			$r->headers_out->{'Cache-control'} = 'no-cache';
-		}
-		$r->content_type('text/xml');
 
-		$r->print($output) unless $r->header_only;
-		return Apache::OK;
-	} else {
-		my ($output, $media, $charset) = $dsd->serialize_style($data,
+			my $application = $xml->application_name;
+			if (not defined $application) {
+				for ('.mpl', '.pl') {
+					if (-f $stripped_filename . $_) {
+						$application = $stripped_filename . $_;
+						last;
+					}
+				}
+				if (not defined $application) {
+					$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] no application found");
+					return Apache::NOT_FOUND;
+				}
+			}
+
+			my $input_module = $r->dir_config('RayAppInputModule');
+			if (defined $input_module) {
+				my $package = __PACKAGE__;
+				my $line = __LINE__;
+				$line += 2;
+				eval qq!#line $line "$package"\nuse $input_module!;
+				if ($@) {
+					$r->content_type('text/plain');
+					$r->print("Failed to load input module for [$uri]\n");
+					$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] input module [$input_module]\n$@");
+					return Apache::SERVER_ERROR;
+				}
+
+				my $handler = "${input_module}::handler";
+				{
+					no strict;
+					eval {
+						@params = &{ $handler }( $xml, $r );
+					};
+				}
+				if ($@) {
+					$r->content_type('text/plain');
+					$r->print("Failed to run input module for [$uri]\n");
+					$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] input module [$input_module]\n$@");
+					return Apache::SERVER_ERROR;
+				}
+			}
+
+			my $tied = tied *STDOUT;
+			my @stdout_data;
+			my $err;
+			my $data;
+
 			{
-				'rayapp' => $rayapp,
-				( scalar(@style_params)
-					? ( style_params => \@style_params )
-					: () ),
-				RaiseError => 0,
-			},
-			@stylesheets);
+				local *STDOUT;
+				# binmode STDOUT, ':bytes';
+				tie *STDOUT, 'IO::ScalarArray', \@stdout_data;
 
-		if ($dsd->errstr or not defined $output) {
+				eval {
+					$data = $rayapp->execute_application_handler_reuse($application, @params);
+				};
+				$err = $@ if $@;
+				if (defined $tied) {
+					tie *STDOUT, $tied;
+				} else {
+					untie *STDOUT;
+				}
+			}
+
+			for (@params) {
+				if (defined $_
+					and ref $_
+					and $_->can('rollback')) {
+					eval { $_->rollback; };
+					last;
+				}
+			}
+
+			if (defined $err) {
+				$r->content_type('text/plain');
+				$r->print("Failed to run application for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] application [$application]\n$err");
+				return Apache::SERVER_ERROR;
+			}
+
+			if (not defined $data) {
+				$r->content_type('text/plain');
+				$r->print("Failed to run application for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] application [$application] returned undef");
+				return Apache::SERVER_ERROR;
+			}
+
+			if (not ref $data) {
+				if ($data eq '500') {
+					$r->content_type('text/plain');
+					$r->print("Failed to run application for [$uri]\n");
+					$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] application [$application] returned 500: " . $rayapp->errstr);
+					return Apache::SERVER_ERROR;
+				}
+
+				# Handler already sent the response itself
+				# using series of prints, we'va caught it in
+				# @stdout_data
+
+				$r->status($data);
+				$r->headers_out->{'X-RayApp-Status'} = $data;
+				$r->send_cgi_header(
+					join '', @stdout_data
+				);
+				return Apache::OK;
+			}
+			$dom = $xml->serialize_data_dom($data,
+				{
+					RaiseError => 0,
+				}
+			);
+			if (not defined $dom
+				or defined $xml->errstr) {
+				$r->content_type('text/plain');
+				$r->print("Failed to serialize output data for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] " . $xml->errstr);
+				return Apache::SERVER_ERROR;
+			}
+		}
+	}
+	my @stylesheets = $xml->find_stylesheets($ext);
+
+
+	if (defined $filename and @stylesheets) {
+		for (@stylesheets) {
+			my $new_uri = URI->new_abs($_, $filename);
+			if (-f $new_uri) {
+				$_ = "file:$new_uri";
+			}
+		}
+		# $r->log_error("Translated stylesheets [@stylesheets] in pid $$");
+	}
+
+	if ((@stylesheets or $r->headers_in->{'X-RayApp-Frontend-URI'})
+		and not defined $dom) {
+		$dom = $xml->xmldom;
+	}
+	if ((@stylesheets or $r->headers_in->{'X-RayApp-Frontend-URI'})
+		and not keys %stylesheets_params) {
+		my $style_param_module = $r->dir_config('RayAppStyleParamModule');
+		if (defined $style_param_module) {
+			my $package = __PACKAGE__;
+			my $line = __LINE__;
+			$line += 2;
+			eval qq!#line $line "$package"\nuse $style_param_module!;
+			if ($@) {
+				$r->content_type('text/plain');
+				$r->print("Failed to load style param module for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] style param module [$style_param_module]\n$@");
+				return Apache::SERVER_ERROR;
+			}
+
+			my $handler = "${style_param_module}::handler";
+			{
+				no strict;
+				eval {
+					%stylesheets_params = &{ $handler }( $xml, @params );
+				};
+			}
+			if ($@) {
+				$r->content_type('text/plain');
+				$r->print("Failed to run style param module for [$uri]\n");
+				$r->log_error("RayApp::mod_perl: uri [$uri] style param module [$style_param_module]\n$@");
+				return Apache::SERVER_ERROR;
+			}
+		}
+	}
+	for (@params) {
+		if (defined $_
+			and ref $_
+			and $_->can('disconnect')) {
+			eval { $_->disconnect; };
+			last;
+		}
+	}
+
+	my ($output, $media, $charset);
+	if (@stylesheets) {
+		($output, $media, $charset) = $xml->style_string($dom,
+			{
+			style_params => \%stylesheets_params,
+			RaiseError => 0,
+			},
+			@stylesheets,
+		);
+		if (not defined $output) {
 			$r->content_type('text/plain');
-			$r->print("Broken RayApp setup, failed to serialize and style your data, sorry.\n");
-			print_errors
-				"Serialization and styling failed for [$0]: ",
-				$dsd->errstr, "\n", $err_in_browser;
+			$r->print("Failed to style output for [$uri]\n");
+			$r->log_error("RayApp::mod_perl: uri [$uri] filename [$filename] style error " . $xml->errstr);
 			return Apache::SERVER_ERROR;
 		}
-		if ($type eq 'pdf') {
-			require File::Temp;
-			my $processor = $ENV{'RAYAPP_FO_PROCESSOR'};
-			if (not defined $processor) {
-				$processor = 'fop %IN -pdf %OUT';
-			}
-			my $in = new File::Temp(
-				TEMPLATE => 'rayappXXXXXX',
-				SUFFIX => '.fo',
-				DIR => '/tmp',
-				);
-			my $out = new File::Temp(
-				TEMPLATE => 'rayappXXXXXX',
-				SUFFIX => '.pdf',
-				DIR => '/tmp',
-				);
-			unless ($processor =~ s/%IN/ $in->filename() /ge
-				and $processor =~ s/%OUT/ $out->filename() /ge) {
-				$r->content_type('text/plain');
-				$r->print("Broken RayApp setup, PDF generation failed, sorry.\n");
-				print_errors "Processor line [$processor] has to have both %IN and %OUT\n", $err_in_browser;
-				return Apache::SERVER_ERROR;
-			}
-			print { $in } $output;
-			$in->close();
-			print STDERR "Calling [$processor]\n";
-			system($processor);
-			local $/ = undef;
-			$output = < $out >;
-			$media = 'application/pdf';
-			$charset = undef;
+	} else {
+		my $i = 1;
+		for my $k (keys %stylesheets_params) {
+			my $data = "$k:$stylesheets_params{$k}";
+			$data =~ s/([^a-zA-Z0-9])/ sprintf "&#x%x;", ord $1 /ge;
+			$r->headers_out->{"X-RayApp-Style-Param-$i"} = $data;
+			$i++;
+		}
+		if (defined $dom) {
+			$output = $dom->toString;
+			$media = 'text/xml';
+			$charset = $dom->encoding;
 		} else {
-			$r->headers_out->{'Pragma'} = 'no-cache';
-			$r->headers_out->{'Cache-control'} = 'no-cache';
+			$output = $xml->content;
+			$media = $xml->content_type;
 		}
-		if (defined $media) {
-			if (defined $charset) {
-				$media .= "; charset=$charset";
-			}
-
-			if ($r->headers_out->{'Content-Type'} ne $media) {
-				$r->content_type($media);
-			}
-		}
-		$r->print($output) unless $r->header_only;
-		return Apache::OK;
 	}
-	return Apache::SERVER_ERROR;
+
+	if (defined $ext and $ext eq 'pdf') {
+		require File::Temp;
+		my $processor = $r->dir_config('RayAppFOProcessor');
+		if (not defined $processor) {
+			$processor = 'fop %IN -pdf %OUT';
+		}
+		my $in = new File::Temp(
+			TEMPLATE => 'rayappXXXXXX',
+			SUFFIX => '.fo',
+			DIR => '/tmp',
+		);
+		my $out = new File::Temp(
+			TEMPLATE => 'rayappXXXXXX',
+			SUFFIX => '.pdf',
+			DIR => '/tmp',
+		);
+		unless ($processor =~ s/%IN/ $in->filename() /ge
+			and $processor =~ s/%OUT/ $out->filename() /ge) {
+			$r->content_type('text/plain');
+			$r->print("Failed to generate PDF for [$uri]\n");
+			$r->log_error("RayApp::mod_perl: uri [$uri] processor [$processor] should have both %IN and %OUT");
+			return Apache::SERVER_ERROR;
+		}
+		print { $in } $output;
+		$in->close();
+		$r->log_rerror(&Apache::Log::LOG_MARK, Apache::LOG_INFO,
+			APR::SUCCESS, "Calling [$processor]");
+		system($processor);
+		local $/ = undef;
+		$output = < $out >;
+		$media = 'application/pdf';
+		$charset = undef;
+	} else {
+		$r->headers_out->{'Pragma'} = 'no-cache';
+		$r->headers_out->{'Cache-control'} = 'no-cache';
+	}
+	if (defined $media) {
+		if (defined $charset
+			and ($media ne 'text/xml'
+				or not $charset =~ /^utf-?8$/i)) {
+			$media .= "; charset=$charset";
+		}
+		if (not defined $r->headers_out->{'Content-Type'}
+			or $r->headers_out->{'Content-Type'} ne $media) {
+			$r->content_type($media);
+		}
+	}
+	$r->print($output) if not $r->header_only;
+	my $redirect_location = $xml->redirect_location;
+	if (defined $redirect_location) {
+		$r->status($xml->status);
+		$r->err_headers_out->{Location} = $redirect_location;
+	}
+	return Apache::OK;
 }
 
 1;

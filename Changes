@@ -1,6 +1,9 @@
 
 This is change file for RayApp.
 
+1.165 working
+	Added support for plain transformation of XML (to HTML).
+
 1.148 Sat Sep  4 19:45:32 CEST 2004
 	Further tests.
 

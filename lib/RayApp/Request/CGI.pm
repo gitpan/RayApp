@@ -4,8 +4,13 @@ use strict;
 use CGI ();
 use IO::ScalarArray;
 
+use base 'RayApp::Request';
+
+my $singleton;
+
 sub new {
 	my $class = shift;
+	return $singleton if defined $singleton;
 	
 	my @stdin = <>;
 	tie *STDIN, "IO::ScalarArray", \@stdin;
@@ -21,7 +26,7 @@ sub new {
 
 		$q->delete('POSTDATA');
 	}
-	return bless $self, $class;
+	return $singleton = bless $self, $class;
 }
 sub user {
 	return shift->remote_user;
@@ -60,6 +65,27 @@ sub referer {
 }
 sub url {
 	my $q = shift;
+	my $uri = $ENV{'HTTP_X_RAYAPP_FRONTEND_URI'};
+	if (not defined $uri) {
+		$uri = $q->{'q'}->url('-full' => 1, -query => 0);
+	}
+	my %opts = @_;
+	my $out = $q->parse_full_uri($uri, %opts);
+	if ($opts{'query'} or $opts{'-query'}) {
+		if (defined $ENV{'QUERY_STRING'}) {
+			if ($ENV{'QUERY_STRING'} ne '') {
+				$out .= "?$ENV{'QUERY_STRING'}";
+			}
+		} elsif (defined $ENV{'REDIRECT_QUERY_STRING'}) {
+			if ($ENV{'REDIRECT_QUERY_STRING'} ne '') {
+				$out .= "?$ENV{'REDIRECT_QUERY_STRING'}";
+			}
+		}
+	}
+	return $out;
+}
+sub url_orig {
+	my $q = shift;
 	my %opts = @_;
 	for (keys %opts) {
 		if (not /^-/) {
@@ -81,6 +107,46 @@ sub body {
 		return join '', @{ $self->{stdin} };
 	}
 	return;
+}
+
+sub upload {
+	my $self = shift;
+	my $q = $self->{'q'};
+
+	my @params = @_;
+	if (not @params) {
+		@params = grep { grep { ref $_ } $q->param($_) } $q->param;
+	}
+	require RayApp::Request::Upload;
+
+	my @out;
+	for my $param (@params) {
+		if (defined $self->{uploads}{$param}) {
+			push @out, @{ $self->{uploads}{$param} };
+			next;
+		}
+		for my $fh ($q->upload($param)) {
+			my $filename = $q->param($param);
+			local $SIG{__WARN__} = sub {};
+			my $info = $q->uploadInfo($param);
+			my $content = join '', <$fh>;
+			close $fh;
+			my $u = new RayApp::Request::Upload(
+				filename => $filename,
+				# filehandle => $_,
+				content_type => $info->{'Content-Type'},
+				content => $content,
+				name => $param,
+			);
+			push @{ $self->{uploads}{$param} }, $u;
+			push @out, $u;
+		}
+	}
+	if (wantarray) {
+		@out;
+	} else {
+		$out[0];
+	}
 }
 
 1;
