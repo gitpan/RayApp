@@ -10,7 +10,7 @@ use Test::More;
 use Apache::TestConfig;
 use Apache::TestRequest qw(GET);
 
-plan tests => 5;
+plan tests => 8;
 
 my ($res, $body);
 
@@ -57,5 +57,20 @@ EOF
 $res = GET '/file';
 $body = $res->content;
 is($body, "Krtek.\n", "GET /file should give us the text file.");
+
+$res = GET '/nonexistent';
+is($res->code, 404, "The URL should not exist");
+is($res->header('Content-Type'), 'text/html; charset=iso-8859-1', 'The error message content type');
+$body = $res->content;
+is($body, <<EOF, "GET /nonexistent should give us the 404 message.");
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>404 Not Found</title>
+</head><body>
+<h1>Not Found</h1>
+<p>The requested URL /nonexistent was not found on this server.</p>
+</body></html>
+EOF
+
 
 

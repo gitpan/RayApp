@@ -1,19 +1,13 @@
 
 package RayApp::CGIStorable;
+use RayApp ();
 use Storable ();
 use IO::ScalarArray ();
 
 use vars qw! @params @style_params !;
 
 BEGIN {
-
-	# print STDERR "CGIStorable: [$0] [@ARGV]\n";
-	# print STDERR "Got to CGIStorable\n";
-	# print STDERR map "$_=$ENV{$_}\n", sort keys %ENV;
-
-	# print STDERR "Admit client $ENV{'RAYAPP_INPUT_MODULE'}\n";
-	# print STDERR "Admit client $ENV{'R2R_DATABASE'}\n";
-
+	
 	my ($rayapp, $dsd);
 	if (defined $ENV{'RAYAPP_INPUT_MODULE'}) {
 
@@ -39,7 +33,6 @@ BEGIN {
 		}
 	}
 	if (defined $ENV{'RAYAPP_STYLE_PARAMS_MODULE'}) {
-	# print STDERR "Using $ENV{'RAYAPP_STYLE_PARAMS_MODULE'}\n";
 
 		eval "use $ENV{'RAYAPP_STYLE_PARAMS_MODULE'};";
 		if ($@) {
@@ -65,7 +58,6 @@ BEGIN {
 }
 
 END {
-	# use Data::Dumper; print STDERR Dumper \@params;
 	my @data;
 	tie *STDOUT, IO::ScalarArray, \@data;
 	my $value = eval { main::handler( @params ) };

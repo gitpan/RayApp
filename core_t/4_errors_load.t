@@ -20,7 +20,7 @@ is($rayapp->load_dsd("jezek:///krtek/"), undef,
 like($rayapp->errstr, '/protocol/i',
 	'Checking error message for bad protocol');
 
-is($rayapp->load_dsd("nonwellformed.xml"), undef,
+is($rayapp->load_dsd("nonwellformed.dsd"), undef,
 	'Loading non-well-formed DSD');
 like($rayapp->errstr, '/tag/i',
 	'Checking error message for bad-formed XML');
@@ -343,12 +343,12 @@ if (${^TAINT}) {
 	delete $ENV{'PATH'};
 	delete $ENV{'BASH_ENV'};
 }
-my $extout = `$^X nonwellformed.xml 2> /dev/null`;
+my $extout = `$^X nonwellformed.dsd 2> /dev/null`;
 like($extout, '/Status: 500
 Content-Type: text\/plain
 
 Broken RayApp setup, failed to load DSD, sorry\.
-Loading DSD \[nonwellformed\.xml\] failed: .*6:.* Opening and ending tag mismatch: a line 4 and b/',
+Loading DSD \[nonwellformed\.dsd\] failed: .*6:.* Opening and ending tag mismatch: a line 4 and b/',
 	'Check');
 
 

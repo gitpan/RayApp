@@ -10,5 +10,5 @@ BEGIN { use_ok( 'RayApp' ) }
 my $rayapp = new RayApp;
 isa_ok($rayapp, 'RayApp', 'RayApp object');
 
-is($RayApp::VERSION, 1.147, 'Do tests match the version of RayApp?');
+is($RayApp::VERSION, 1.148, 'Do tests match the version of RayApp?');
 

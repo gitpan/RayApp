@@ -15,7 +15,6 @@ sub print_errors (@) {
 }
 
 sub handler {
-
 	my $uri;
 
 	# The URI can come as an argument on command line ...
@@ -43,7 +42,7 @@ sub handler {
 	else {
 		$uri = $0;
 		if ($uri =~ s/\.(mpl|pl)$//) {
-			for my $ext ('.dsd', '.xml') {
+			for my $ext ('.dsd') {
 				if (-f $uri . $ext) {
 					$uri .= $ext;
 					last;
@@ -65,8 +64,8 @@ sub handler {
 	if ($uri =~ /\.html$/ and -f $uri) {
 		local *FILE;
 		open FILE, $uri or do {
+			print "Status: 404\nContent-Type: text/plain\n\n";
 			print_errors "Error reading [$uri]: $!\n", $err_in_browser;
-			print "Status: 404\n\n";
 			exit;
 		};
 		local $/ = undef;
@@ -78,151 +77,162 @@ sub handler {
 
 	my $rayapp = new RayApp;
 
-	my @stylesheets;
-	my $type;
-	if ($uri =~ s/\.(html|txt|pdf|fo)$//) {
-		$type = $1;
-		for my $ext ('.dsd', '.xml') {
-			if (-f $uri . $ext) {
-				$uri .= $ext;
-				last;
+	my ($type, $dsd, $data, @stylesheets, @style_params);
+	if ($uri =~ /\.xml$/ and -f $uri) {
+		$dsd = $rayapp->load_xml($uri) or do {
+			print "Status: 500\nContent-Type: text/plain\n\n";
+                        print "Broken RayApp setup, XML not available, sorry.\n";
+                        print_errors "Reading XML [$uri] failed: ",
+                                $rayapp->errstr, "\n", $err_in_browser;
+                        exit;
+                };
+	} else {
+		if ($uri =~ s/\.(xml|html|txt|pdf|fo)$//) {
+			$type = $1;
+			for my $ext ('.dsd') {
+				if (-f $uri . $ext) {
+					$uri .= $ext;
+					last;
+				}
+			}
+			
+			if ($type eq 'html'
+				and defined $ENV{'RAYAPP_HTML_STYLESHEETS'}) {
+				@stylesheets = split /:/, $ENV{'RAYAPP_HTML_STYLESHEETS'};
+			} elsif ($type eq 'txt'
+				and defined $ENV{'RAYAPP_TXT_STYLESHEETS'}) {
+				@stylesheets = split /:/, $ENV{'RAYAPP_TXT_STYLESHEETS'};
+			} elsif (($type eq 'pdf' or $type eq 'fo')
+				and defined $ENV{'RAYAPP_FO_STYLESHEETS'}) {
+				@stylesheets = split /:/, $ENV{'RAYAPP_FO_STYLESHEETS'};
+			}
+			if ($type ne 'xml' and not @stylesheets) {
+				my $styleuri = $uri;
+				$styleuri =~ s/\.[^\.]+$//;
+				@stylesheets = RayApp::find_stylesheet($styleuri, $type);
 			}
 		}
-		
-		if ($type eq 'html'
-			and defined $ENV{'RAYAPP_HTML_STYLESHEETS'}) {
-			@stylesheets = split /:/, $ENV{'RAYAPP_HTML_STYLESHEETS'};
-		} elsif ($type eq 'txt'
-			and defined $ENV{'RAYAPP_TXT_STYLESHEETS'}) {
-			@stylesheets = split /:/, $ENV{'RAYAPP_TXT_STYLESHEETS'};
-		} elsif (($type eq 'pdf' or $type eq 'fo')
-			and defined $ENV{'RAYAPP_FO_STYLESHEETS'}) {
-			@stylesheets = split /:/, $ENV{'RAYAPP_FO_STYLESHEETS'};
-		}
-		if (not @stylesheets) {
-			my $styleuri = $uri;
-			$styleuri =~ s/\.[^\.]+$//;
-			@stylesheets = RayApp::find_stylesheet($styleuri, $type);
-		}
-	} elsif ($uri =~ /\.xml$/ and not -f $uri) {
-		my $tmpuri = $uri;
-		$tmpuri =~ s/\.xml$/.dsd/;
-		if (-f $tmpuri) {
-			$uri = $tmpuri;
-		}
-	}
 
-	my $dsd = $rayapp->load_dsd($uri);
-	if (not defined $dsd) {
-		print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to load DSD, sorry.\n";
-		print_errors "Loading DSD [$uri] failed: ",
-			$rayapp->errstr, "\n", $err_in_browser;
-		exit;
-	}
-	my $application = $dsd->application_name;
-	if (not defined $application) {
-		my $appuri = $uri;
-		$appuri =~ s/\.[^\.]+$//;
-		my $ok = 0;
-		for my $ext ('.pl', '.mpl', '.xpl') {
-			if (-f $appuri . $ext) {
-				$application = $appuri . $ext;
-				$ok = 1;
-				last;
+		$dsd = $rayapp->load_dsd($uri);
+		if (not defined $dsd) {
+			if (not -f $uri) {
+				print "Status: 404\nContent-Type: text/plain\n\n";
+				print "The requested URL was not found on this server.\n";
+			} else {
+				print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to load DSD, sorry.\n";
+				print_errors "Loading DSD [$uri] failed: ",
+					$rayapp->errstr, "\n", $err_in_browser;
 			}
-		}
-		if (not $ok) {
-			print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to find application, sorry.\n";
 			exit;
 		}
-	}
-	my @params;
-	if (defined $ENV{'RAYAPP_INPUT_MODULE'}) {
-		eval "use $ENV{'RAYAPP_INPUT_MODULE'};";
+		my $application = $dsd->application_name;
+		if (not defined $application) {
+			my $appuri = $uri;
+			$appuri =~ s/\.[^\.]+$//;
+			my $ok = 0;
+			for my $ext ('.pl', '.mpl', '.xpl') {
+				if (-f $appuri . $ext) {
+					$application = $appuri . $ext;
+					$ok = 1;
+					last;
+				}
+			}
+			if (not $ok) {
+				print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to find application, sorry.\n";
+				exit;
+			}
+		}
+		my @params;
+		if (defined $ENV{'RAYAPP_INPUT_MODULE'}) {
+			eval "use $ENV{'RAYAPP_INPUT_MODULE'};";
+			if ($@) {
+				print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to load input module, sorry.\n";
+				print_errors "Error loading [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
+					$@, $err_in_browser;
+				exit;	
+			}
+
+			my $handler = "$ENV{'RAYAPP_INPUT_MODULE'}::handler";
+			{
+			no strict;
+			eval { @params = &{ $handler }($dsd); };
+			}
+			if ($@) {
+				print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run input module, sorry.\n";
+				print_errors "Error executing [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
+					$@, $err_in_browser;
+				exit;	
+			}
+		}
+		if (defined $ENV{'RAYAPP_STYLE_PARAMS_MODULE'}) {
+			eval "use $ENV{'RAYAPP_STYLE_PARAMS_MODULE'};";
+			if ($@) {
+				print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to load style params module, sorry.\n";
+				print_errors "Error loading [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
+					$@, $err_in_browser;
+				exit;	
+			}
+
+			my $handler = "$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}::handler";
+			{
+			no strict;
+			eval { @style_params = &{ $handler }($dsd, @params); };
+			}
+			if ($@) {
+				print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run style params module, sorry.\n";
+				print_errors "Error executing [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
+					$@, $err_in_browser;
+				exit;	
+			}
+		}
+
+		my @stdout;
+		tie *STDOUT, "IO::ScalarArray", \@stdout;
+		eval { $data = $rayapp->execute_application_cgi($application, @params) };
+		untie *STDOUT;
+                for (@params) {
+                        if (defined $_ and ref $_ and $_->can('disconnect')) {
+                                eval { $_->rollback; };
+                                eval { $_->disconnect; };
+                        }
+                }
+
 		if ($@) {
-			print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to load input module, sorry.\n";
-			print_errors "Error loading [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
+			print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run the application, sorry.\n";
+			print_errors "Error executing [$application]\n",
 				$@, $err_in_browser;
+			exit;
+		}
+
+		if (not ref $data and $data eq '500') {
+			print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run the application, sorry.\n";
+			print_errors "Error executing [$application]\n",
+				$rayapp->errstr, $err_in_browser;
 			exit;	
 		}
 
-		my $handler = "$ENV{'RAYAPP_INPUT_MODULE'}::handler";
-		{
-		no strict;
-		eval { @params = &{ $handler }($dsd); };
+		if (not ref $data) {
+			print "Status: $data\n";
+			print @stdout;
+			exit;
 		}
-		if ($@) {
-			print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run input module, sorry.\n";
-			print_errors "Error executing [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
-				$@, $err_in_browser;
-			exit;	
-		}
-	}
-	my @style_params;
-	if (defined $ENV{'RAYAPP_STYLE_PARAMS_MODULE'}) {
-		eval "use $ENV{'RAYAPP_STYLE_PARAMS_MODULE'};";
-		if ($@) {
-			print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to load style params module, sorry.\n";
-			print_errors "Error loading [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
-				$@, $err_in_browser;
-			exit;	
-		}
-
-		my $handler = "$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}::handler";
-		{
-		no strict;
-		eval { @style_params = &{ $handler }($dsd, @params); };
-		}
-		if ($@) {
-			print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run style params module, sorry.\n";
-			print_errors "Error executing [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
-				$@, $err_in_browser;
-			exit;	
-		}
-	}
-
-	my $data;
-	my @stdout;
-	tie *STDOUT, "IO::ScalarArray", \@stdout;
-	eval { $data = $rayapp->execute_application_cgi($application, @params) };
-	untie *STDOUT;
-	if (@params
-		and defined $params[0]
-		and ref $params[0]
-		and $params[0]->can('disconnect')) {
-		eval { $params[0]->rollback; };
-		$params[0]->disconnect;
-	}
-	if ($@) {
-		print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run the application, sorry.\n";
-		print_errors "Error executing [$application]\n",
-			$@, $err_in_browser;
-		exit;
-	}
-
-	if (not ref $data and $data eq '500') {
-		print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run the application, sorry.\n";
-		print_errors "Error executing [$application]\n",
-			$rayapp->errstr, $err_in_browser;
-		exit;	
-	}
-
-	if (not ref $data) {
-		print "Status: $data\n";
-		print @stdout;
-		exit;
 	}
 
 	if (not @stylesheets) {
-		my $output = $dsd->serialize_data($data, { RaiseError => 0 });
-		if ($dsd->errstr) {
-			print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, data serialization failed, sorry.\n";
-			print_errors "Serialization failed for [$0]: ",
-				$dsd->errstr, "\n", $err_in_browser;
-			exit;
+		my $output;
+		if (ref $dsd eq 'HASH') {
+                        $output = $dsd->{content};
+		} else {
+			$output = $dsd->serialize_data($data, { RaiseError => 0 });
+			if ($dsd->errstr) {
+				print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, data serialization failed, sorry.\n";
+				print_errors "Serialization failed for [$0]: ",
+					$dsd->errstr, "\n", $err_in_browser;
+				exit;
+			}
+			print "Pragma: no-cache\nCache-control: no-cache\n";
 		}
 		print "Status: 200\n";
-		print "Pragma: no-cache\nCache-control: no-cache\n";
 		print "Content-Type: text/xml\n\n", $output;
 	} else {
 		my ($output, $media, $charset) = $dsd->serialize_style($data,
@@ -230,7 +240,7 @@ sub handler {
 				( scalar(@style_params)
 					? ( style_params => \@style_params )
 					: () ),
-				RaiseError => 0,
+			RaiseError => 0,
 			},
 			@stylesheets);
 
@@ -275,14 +285,16 @@ sub handler {
 			$media = 'application/pdf';
 			$charset = undef;
 		}
-		print "Status: 200\n";
 		if (defined $media) {
+			print "Pragma: no-cache\nCache-control: no-cache\n"
+				if $type ne 'pdf';
 			if (defined $charset) {
 				$media .= "; charset=$charset";
 			}
-			print "Pragma: no-cache\nCache-control: no-cache\n"
-				if $type ne 'pdf';
+			print "Status: 200\n";
 			print "Content-Type: $media\n\n";
+		} else {
+			print "Status: 200\n";
 		}
 		print $output;
 		exit;

@@ -41,6 +41,8 @@ if (prompt("Would you like me to run tests with your Apache?", "yes") =~ /^y/i) 
 		print "\tGood. We will try to run tests using your Apache.\n";
 		$WILL_RUN_APACHE_TESTS = 1;
 		$tests .= ' t/TEST';
+		symlink 'ray', 't/htdocs/ray1';
+		symlink 'ray', 't/htdocs/ray2';
 	}
 } else {
 	print "\tGood. We will only test the core RayApp.\n";

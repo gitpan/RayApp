@@ -3,7 +3,7 @@ package RayApp;
 use strict;
 use URI::file ();
 
-$RayApp::VERSION = '1.147';
+$RayApp::VERSION = '1.148';
 
 sub new {
 	my $class = shift;
@@ -18,34 +18,49 @@ sub errstr {
 	return ( ref $self ? $self->{errstr} : $RayApp::errstr );
 }
 
-sub load_dsd {
+sub load_xml {
 	my ($self, $uri) = @_;
 	$self->{errstr} = undef;
 	$uri = URI->new_abs($uri, $self->{base});
 	if (defined $self->{'cache'}
 		and $self->{'cache'}
-		and defined $self->{uris}{$uri}
+		and defined $self->{xmls}{$uri}
 		and ($uri =~ m!^file://(/.+)$!
 			or $uri =~ m!^file:(/[^/].+)$!)) {
 		my $filename = $1;
 		my ($mtime) = (stat $filename)[9];
 		if (defined $self->{uris}{$uri}{'mtime'}
 			and $self->{uris}{$uri}{'mtime'} == $mtime) {
-			return $self->{uris}{$uri};
+			return $self->{xmls}{$uri};
 		}
 	}
 
-	my $ret = eval {
-		my $dsd = $self->load_dsd_uri($uri);
-		return $self->parse_dsd($dsd);
+	my $xml = eval {
+		return $self->load_xml_uri($uri);
 	};
-
 	if ($@) {
 		$self->{errstr} = $@;
 		$self->{errstr} =~ s/\n+$//;
 		return;
 	}
-	return $ret;
+	return $xml;
+}
+
+sub load_dsd {
+	my ($self, $uri) = @_;
+	my $xml = $self->load_xml($uri) or return;
+	if (defined $self->{uris}{$xml->{uri}}) {
+		return $self->{uris}{$xml->{uri}};
+	}
+	my $dsd = eval {
+		return $self->parse_dsd($xml);
+	};
+	if ($@) {
+		$self->{errstr} = $@;
+		$self->{errstr} =~ s/\n+$//;
+		return;
+	}
+	return $dsd;
 }
 
 use LWP::UserAgent ();
@@ -61,7 +76,7 @@ sub load_user_agent {
 }
 
 use Digest::MD5 ();
-sub load_dsd_uri {
+sub load_xml_uri {
 	my ($self, $uri) = @_;
 	if (not defined $self->{ua}) {
 		$self->load_user_agent();
@@ -82,23 +97,28 @@ sub load_dsd_uri {
 		};
 }
 
+sub load_xml_string {
+	my $self = shift;
+	my $md5_hex = Digest::MD5::md5_hex($_[0]);
+	return {
+		'uri' => "md5:$md5_hex",
+		'content' => $_[0],
+		'md5_hex' => $md5_hex,
+	};
+}
 sub load_dsd_string {
 	my $self = shift;
 	$self->{errstr} = undef;
-	my $md5_hex = Digest::MD5::md5_hex($_[0]);
-	my $ret = eval {
-		$self->parse_dsd({
-			'uri' => "md5:$md5_hex",
-			'content' => $_[0],
-			'md5_hex' => $md5_hex,
-			});
+	my $xml = $self->load_xml_string(@_);
+	my $dsd = eval {
+		$self->parse_dsd($xml);
 	};
 	if ($@) {
 		$self->{errstr} = $@;
 		$self->{errstr} =~ s/\n+$//;
 		return;
 	}
-	return $ret;
+	return $dsd;
 }
 
 use XML::LibXML ();

@@ -2,7 +2,7 @@
 
 #!perl -d:ptkdb
 
-use Test::More tests => 271;
+use Test::More tests => 278;
 use bytes;
 use Cwd ();
 
@@ -115,6 +115,7 @@ is($dsd->serialize_data({ 'result' => 34, 'name' => 'Peter'},
 ', 'Serialize with doctype_ext');
 
 
+
 ok($dsd = $rayapp->load_dsd("simple2.xml"),
 	'Loading correct DSD t/simple2.xml');
 is($rayapp->errstr, undef, 'Checking that there was no error');
@@ -147,7 +148,20 @@ is($dsd->out_content, '<?xml version="1.0" encoding="UTF-8"?>
 
 
 
+ok($dsd = $rayapp->load_dsd("../t/htdocs/ray/app1.dsd"),
+	'Loading correct DSD ../t/htdocs/ray/app1.dsd');
+is($rayapp->errstr, undef, 'No error, please');
+like($dsd->uri, '/^file:.*app1.dsd$/', 'Checking URI of the DSD');
+is($dsd->md5_hex, '89f4d809650f06bd74e148d72ab3e22a',
+	'Checking MD5 of the DSD');
+is("@{[ sort keys %{ $dsd->params } ]}", "id",
+	'Checking parameters found');
 
+
+
+ok($dsd = $rayapp->load_dsd("../t/htdocs/ray/app1.dsd"),
+	'Load it again');
+is($rayapp->errstr, undef, 'Again, no error');
 
 
 ok($dsd = $rayapp->load_dsd_string(<<'EOF'), 'Loading correct DSD from string');
@@ -1741,7 +1755,7 @@ is($rayapp->errstr, undef, 'No error still?');
 
 
 
-is(scalar keys %{ $rayapp->{uris} }, 34,
+is(scalar keys %{ $rayapp->{uris} }, 35,
 	'Total number of distinct URIs processed');
 
 
@@ -2007,9 +2021,9 @@ if (${^TAINT}) {
 	$^X =~ /^(.+)$/ and $^X = $1;
 }
 my $extout = `$^X ../blib/script/rayapp_cgi_wrapper script2.dsd`;
-is($extout, 'Status: 200
-Pragma: no-cache
+is($extout, 'Pragma: no-cache
 Cache-control: no-cache
+Status: 200
 Content-Type: text/xml
 
 <?xml version="1.0" standalone="yes"?>
@@ -2061,9 +2075,9 @@ Content-Type: text/xml
 
 
 $extout = `../blib/script/rayapp_cgi_wrapper script2.dsd`;
-is($extout, 'Status: 200
-Pragma: no-cache
+is($extout, 'Pragma: no-cache
 Cache-control: no-cache
+Status: 200
 Content-Type: text/xml
 
 <?xml version="1.0" standalone="yes"?>
@@ -2113,9 +2127,9 @@ Content-Type: text/xml
 
 $ENV{RAYAPP_HTML_STYLESHEETS} = 'script1.xsl';
 $extout = `../blib/script/rayapp_cgi_wrapper script1.html`;
-is($extout, 'Status: 200
-Pragma: no-cache
+is($extout, 'Pragma: no-cache
 Cache-control: no-cache
+Status: 200
 Content-Type: text/html; charset=UTF-8
 
 <html>
@@ -2146,9 +2160,9 @@ Study program:
 
 $ENV{RAYAPP_HTML_STYLESHEETS} = 'script1.xsl';
 $extout = `../blib/script/rayapp_cgi_wrapper script2.html`;
-is($extout, 'Status: 200
-Pragma: no-cache
+is($extout, 'Pragma: no-cache
 Cache-control: no-cache
+Status: 200
 Content-Type: text/html; charset=UTF-8
 
 <html>

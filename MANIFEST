@@ -16,7 +16,7 @@ core_t/example_findpeople.xml
 core_t/Getfile.pm
 core_t/logs/access_log
 core_t/logs/error_log
-core_t/nonwellformed.xml
+core_t/nonwellformed.dsd
 core_t/person.xml
 core_t/person1.xml
 core_t/person2.xml
@@ -36,15 +36,20 @@ lib/RayApp/CGIWrapper.pm
 lib/RayApp/mod_perl.pm
 lib/RayApp/mod_perl_Storable.pm
 lib/RayApp/Request.pm
+lib/RayApp/Request/APR.pm
+lib/RayApp/Request/CGI.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml
 README
 t/1_base.t
 t/2_cgi.t
-t/3_cgi_storage.t
-t/4_mod_perl.t
-t/5_mod_perl2.t
+t/3_cgi_storage_alias.t
+t/3_cgi_storage_directory.t
+t/4_mod_perl_modperl.t
+t/4_mod_perl_modperl_dir.t
+t/4_mod_perl_script.t
+t/4_mod_perl_script_dir.t
 t/conf/extra.conf.in
 t/htdocs/dir/index.html
 t/htdocs/file
@@ -58,9 +63,14 @@ t/htdocs/ray/app1.mpl
 t/htdocs/ray/app2.dsd
 t/htdocs/ray/app2.mpl
 t/htdocs/ray/app2.xsl
+t/htdocs/ray/processq.dsd
+t/htdocs/ray/processq.mpl
 t/htdocs/ray/text.dsd
 t/htdocs/ray/text.mpl
+t/htdocs/ray/xml.dsd
+t/htdocs/ray/xml.xml
 t/logs/access_log
 t/logs/error_log
+t/RayAppTestInput.pm
 t/set1.pl
 t/TEST.PL

@@ -1,6 +1,13 @@
 
 This is change file for RayApp.
 
+1.148 Sat Sep  4 19:45:32 CEST 2004
+	Further tests.
+
+	RayApp::Request split to APR and CGI files.
+
+	Added ->body method.
+
 1.147 Sat Aug 21 16:49:13 CEST 2004
 	Added tests that run CGI, CGIStorage and mod_perl requests
 	against Apache. Minor code cleanup.
