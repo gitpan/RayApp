@@ -1,26 +1,13 @@
 
-package RayApp::mod_perl::TieSTDOUT;
-
-sub TIEHANDLE {
-	my ($class, $data) = @_;
-	return bless $data, $class;
-}
-sub PRINT {
-	my $self = shift;
-	push @$self, @_;
-}
-sub PRINTF {
-	my $self = shift;
-	push @$self, sprintf @_;
-}
-
-
 package RayApp::mod_perl;
 
 use RayApp ();
 use Apache::Response ();
+use Apache::RequestRec ();
 use Apache::Const -compile => qw(OK SERVER_ERROR DECLINED);
+use Apache::RequestIO ();
 use APR::Table ();
+use IO::ScalarArray ();
 use strict;
                                                                                 
 sub print_errors (@) {
@@ -35,6 +22,8 @@ my $rayapp;
 sub handler {
 	my $r = shift;
 
+=comment
+
 	my $uri;
 	if (defined $ENV{'RAYAPP_DIRECTORY'}
 		and defined $ENV{'PATH_INFO'}) {
@@ -45,7 +34,11 @@ sub handler {
 	if (not defined $uri) {
 		$uri = $ENV{'SCRIPT_FILENAME'};
 	}
-	if ($uri =~ m!/$!  and defined $ENV{'RAYAPP_DIRECTORY_INDEX'}) {
+
+=cut
+
+	my $uri = $r->filename();
+	if ($uri =~ m!/$! and defined $ENV{'RAYAPP_DIRECTORY_INDEX'}) {
 		$uri .= $ENV{'RAYAPP_DIRECTORY_INDEX'};
 	}
 
@@ -61,7 +54,7 @@ sub handler {
 
 	my @stylesheets;
 	my $type;
-	if ($uri =~ s/\.(html|txt)$//) {
+	if ($uri =~ s/\.(html|txt|pdf|fo)$//) {
 		$type = $1;
 		for my $ext ('.dsd', '.xml') {
 			if (-f $uri . $ext) {
@@ -76,20 +69,14 @@ sub handler {
 		} elsif ($type eq 'txt'
 			and defined $ENV{'RAYAPP_TXT_STYLESHEETS'}) {
 			@stylesheets = split /:/, $ENV{'RAYAPP_TXT_STYLESHEETS'};
+		} elsif (($type eq 'pdf' or $type eq 'fo')
+			and defined $ENV{'RAYAPP_FO_STYLESHEETS'}) {
+			@stylesheets = split /:/, $ENV{'RAYAPP_FO_STYLESHEETS'};
 		}
 		if (not @stylesheets) {
 			my $styleuri = $uri;
 			$styleuri =~ s/\.[^\.]+$//;
-			my @exts = ('.xsl', '.xslt');
-			if ($type eq 'txt') {
-				@exts = ('.txtxsl', '.txtxslt');
-			}
-			for my $ext (@exts) {
-				if (-f $styleuri . $ext) {
-					push @stylesheets, $styleuri . $ext;
-					last;
-				}
-			}
+			@stylesheets = RayApp::find_stylesheet($styleuri, $type);
 		}
 	} elsif ($uri =~ /\.xml$/ and not -f $uri) {
 		my $tmpuri = $uri;
@@ -102,7 +89,7 @@ sub handler {
 	my $dsd = $rayapp->load_dsd($uri);
 	if (not defined $dsd) {
 		$r->content_type('text/plain');
-		print "Broken RayApp setup, failed to load DSD, sorry.\n";
+		$r->print("Broken RayApp setup, failed to load DSD, sorry.\n");
 		print_errors "Loading DSD [$uri] failed: ",
 			$rayapp->errstr, "\n", $err_in_browser;
 		return Apache::SERVER_ERROR;
@@ -121,7 +108,7 @@ sub handler {
 		}
 		if (not $ok) {
 			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to find application, sorry.\n";
+			$r->print("Broken RayApp setup, failed to find application, sorry.\n");
 			return Apache::SERVER_ERROR;
 		}
 	}
@@ -130,7 +117,7 @@ sub handler {
 		eval "use $ENV{'RAYAPP_INPUT_MODULE'};";
 		if ($@) {
 			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to load input module, sorry.\n";
+			$r->print("Broken RayApp setup, failed to load input module, sorry.\n");
 			print_errors "Error loading [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
 				$@, $err_in_browser;
 			return Apache::SERVER_ERROR;
@@ -143,7 +130,7 @@ sub handler {
 		}
 		if ($@) {
 			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to run input module, sorry.\n";
+			$r->print("Broken RayApp setup, failed to run input module, sorry.\n");
 			print_errors "Error executing [$ENV{'RAYAPP_INPUT_MODULE'}]\n",
 				$@, $err_in_browser;
 			return Apache::SERVER_ERROR;
@@ -154,7 +141,7 @@ sub handler {
 		eval "use $ENV{'RAYAPP_STYLE_PARAMS_MODULE'};";
 		if ($@) {
 			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to load style params module, sorry.\n";
+			$r->print("Broken RayApp setup, failed to load style params module, sorry.\n");
 			print_errors "Error loading [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
 				$@, $err_in_browser;
 			return Apache::SERVER_ERROR;
@@ -167,7 +154,7 @@ sub handler {
 		}
 		if ($@) {
 			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to run style params module, sorry.\n";
+			$r->print("Broken RayApp setup, failed to run style params module, sorry.\n");
 			print_errors "Error executing [$ENV{'RAYAPP_STYLE_PARAMS_MODULE'}]\n",
 				$@, $err_in_browser;
 			return Apache::SERVER_ERROR;
@@ -182,7 +169,7 @@ sub handler {
 	{
 		local *STDOUT;
 		binmode STDOUT, ':bytes';
-		tie *STDOUT, 'RayApp::mod_perl::TieSTDOUT', \@stdout_data;
+		tie *STDOUT, 'IO::ScalarArray', \@stdout_data;
 
 		eval { $data = $rayapp->execute_application_handler_reuse($application, @params) };
 		$err = $@;
@@ -200,7 +187,7 @@ sub handler {
 	}
 	if ($err) {
 		$r->content_type('text/plain');
-		print "Broken RayApp setup, failed to run the application, sorry.\n";
+		$r->print("Broken RayApp setup, failed to run the application, sorry.\n");
 		print_errors "Error executing [$application]\n",
 			$err, $err_in_browser;
 		return Apache::SERVER_ERROR;
@@ -208,7 +195,7 @@ sub handler {
 
 	if (not ref $data and $data eq '500') {
 		$r->content_type('text/plain');
-		print "Broken RayApp setup, failed to run the application, sorry.\n";
+		$r->print("Broken RayApp setup, failed to run the application, sorry.\n");
 		print_errors "Error executing [$application]\n",
 			$rayapp->errstr, $err_in_browser;
 		return Apache::SERVER_ERROR;
@@ -222,20 +209,20 @@ sub handler {
 		return Apache::OK;
 	}
 
-	$r->headers_out->{'Pragma'} = 'no-cache';
-	$r->headers_out->{'Cache-control'} = 'no-cache';
-
 	if (not @stylesheets) {
 		my $output = $dsd->serialize_data($data, { RaiseError => 0 });
 		if ($dsd->errstr) {
 			$r->content_type('text/plain');
-			print "Broken RayApp setup, data serialization failed, sorry.\n";
+			$r->print("Broken RayApp setup, data serialization failed, sorry.\n");
 			print_errors "Serialization failed for [$0]: ",
 				$dsd->errstr, "\n", $err_in_browser;
 			return Apache::SERVER_ERROR;
 		}
+		$r->headers_out->{'Pragma'} = 'no-cache';
+		$r->headers_out->{'Cache-control'} = 'no-cache';
 		$r->content_type('text/xml');
-		print $output;
+
+		$r->print($output) unless $r->header_only;
 		return Apache::OK;
 	} else {
 		my ($output, $media, $charset) = $dsd->serialize_style($data,
@@ -250,19 +237,57 @@ sub handler {
 
 		if ($dsd->errstr or not defined $output) {
 			$r->content_type('text/plain');
-			print "Broken RayApp setup, failed to serialize and style your data, sorry.\n";
+			$r->print("Broken RayApp setup, failed to serialize and style your data, sorry.\n");
 			print_errors
 				"Serialization and styling failed for [$0]: ",
 				$dsd->errstr, "\n", $err_in_browser;
 			return Apache::SERVER_ERROR;
 		}
+		if ($type eq 'pdf') {
+			require File::Temp;
+			my $processor = $ENV{'RAYAPP_FO_PROCESSOR'};
+			if (not defined $processor) {
+				$processor = 'fop %IN -pdf %OUT';
+			}
+			my $in = new File::Temp(
+				TEMPLATE => 'rayappXXXXXX',
+				SUFFIX => '.fo',
+				DIR => '/tmp',
+				);
+			my $out = new File::Temp(
+				TEMPLATE => 'rayappXXXXXX',
+				SUFFIX => '.pdf',
+				DIR => '/tmp',
+				);
+			unless ($processor =~ s/%IN/ $in->filename() /ge
+				and $processor =~ s/%OUT/ $out->filename() /ge) {
+				$r->content_type('text/plain');
+				$r->print("Broken RayApp setup, PDF generation failed, sorry.\n");
+				print_errors "Processor line [$processor] has to have both %IN and %OUT\n", $err_in_browser;
+				return Apache::SERVER_ERROR;
+			}
+			print { $in } $output;
+			$in->close();
+			print STDERR "Calling [$processor]\n";
+			system($processor);
+			local $/ = undef;
+			$output = < $out >;
+			$media = 'application/pdf';
+			$charset = undef;
+		} else {
+			$r->headers_out->{'Pragma'} = 'no-cache';
+			$r->headers_out->{'Cache-control'} = 'no-cache';
+		}
 		if (defined $media) {
 			if (defined $charset) {
 				$media .= "; charset=$charset";
 			}
-			$r->content_type($media);
+
+			if ($r->headers_out->{'Content-Type'} ne $media) {
+				$r->content_type($media);
+			}
 		}
-		print $output;
+		$r->print($output) unless $r->header_only;
 		return Apache::OK;
 	}
 	return Apache::SERVER_ERROR;

@@ -3,7 +3,7 @@ package RayApp;
 use strict;
 use URI::file ();
 
-$RayApp::VERSION = '1.145';
+$RayApp::VERSION = '1.147';
 
 sub new {
 	my $class = shift;
@@ -316,11 +316,13 @@ sub execute_application_handler {
 		local $/ = undef;
 		my $content = <FILE>;
 		close FILE or die "Error reading `$application' during close: $!\n";
+		if (${^TAINT}) {
+			$content =~ /^(.*)$/s and $content = $1;
+		}
 		my $max_num = $self->{max_handler_num};
 		if (not defined $max_num) {
 			$max_num = 0;
 		}
-		## $content =~ s/(.*)/$1/s;
 		$self->{max_handler_num} = ++$max_num;
 		eval "package RayApp::Root::pkg$max_num; " . $content
 			or die "Compiling `$application' did not return true value\n";
@@ -370,6 +372,9 @@ sub execute_application_handler_reuse {
 			local $/ = undef;
 			my $content = <FILE>;
 			close FILE or die "Error reading `$application' during close: $!\n";
+			if (${^TAINT}) {
+				$content =~ /^(.*)$/s and $content = $1;
+			}
 			my $max_num = $self->{max_handler_num};
 			if (not defined $max_num) {
 				$max_num = 0;
@@ -411,6 +416,10 @@ sub execute_application_process_storable {
 		require Storable;
 		my $inc = join ' ', map "-I$_", @INC;   
 
+		local $ENV{'PATH'};
+		delete $ENV{'PATH'};
+		local $ENV{'BASH_ENV'};
+		delete $ENV{'BASH_ENV'};
 		my $value = `$Config{'perlpath'} $inc -MRayApp::CGIStorable $application $dsd_uri`;
 		if ($value =~ s!^Content-Type: application/x-perl-storable.*\n\n!!s) {
 			my $data = Storable::thaw($value);
@@ -426,6 +435,21 @@ sub execute_application_process_storable {
 		return 500;
 	}
 	return $ret;
+}
+
+sub find_stylesheet {
+	my ($uri, $type) = @_;
+	my @exts = ('.xsl', '.xslt', '.html.xsl', '.html.xslt');
+	if ($type eq 'txt') {
+		@exts = ('.txtxsl', '.txtxslt', '.txt.xsl', '.txt.xslt');
+	} elsif ($type eq 'pdf' or $type eq 'fo') {
+		@exts = ('.foxsl', '.foxslt', '.fo.xsl', '.fo.xslt');
+	}
+	for my $ext (@exts) {
+		if (-f $uri . $ext) {
+			return $uri . $ext;
+		}
+	}
 }
 
 package RayApp::DSD;
@@ -773,7 +797,7 @@ sub application_name {
 sub out_content {
 	my $self = shift;
 	$self->{errstr} = undef;
-	return $self->{dom}->toString;
+	return $self->{dom}->toString(1);
 }
 
 sub serialize_data {
@@ -782,7 +806,7 @@ sub serialize_data {
 	if (not defined $value or not ref $value) {
 		return;
 	}
-	return $value->toString;
+	return $value->toString(1);
 }
 
 sub serialize_data_dom {
@@ -1273,28 +1297,45 @@ sub get_dtd {
 	my $data = { elements => {}, attributes => {} };
 	$self->get_dtd_node($self->{'dom'}, 0, $data);
 
-	my $txt = '';
+# use Data::Dumper; print STDERR Dumper $data;
+
+	my $out = '';
 	for my $element (keys %{ $data->{elements} }) {
-		$txt .= "<!ELEMENT $element ("
-			. join '|', @{ $data->{elements}{$element} };
-		if (grep { $_ eq '#PCDATA' } @{ $data->{elements}{$element} }) {
-			$txt .= ")*>\n";
+
+		my %contents;
+		for my $val ( @{ $data->{elements}{$element} } ) {
+			if (@$val == 1 and $val->[0] eq '#PCDATA') {
+				$contents{'#PCDATA'} = 1;
+			} else {
+				my $txt = join ', ', @$val;
+				if (@$val > 1) {
+					$txt = "($txt)";
+				}
+				$contents{$txt} = 1;
+			}
+		}
+
+		$out .= "<!ELEMENT $element ("
+			. join '|', grep({ $_ eq '#PCDATA' } keys %contents),
+			grep({ $_ ne '#PCDATA' } keys %contents);
+		if (defined $contents{'#PCDATA'}) {
+			$out .= ")*>\n";
 		} else {
-			$txt .= ")>\n";
+			$out .= ")>\n";
 		}
 		if (defined $data->{attributes}{$element}) {
-			$txt .= "<!ATTLIST $element ";
+			$out .= "<!ATTLIST $element ";
 			my $i = 0;
 			for my $v (keys %{ $data->{attributes}{$element} }) {
 				if ($i++) {
-					$txt .= "\n\t";
+					$out .= "\n\t";
 				}
-				$txt .= "$v CDATA #REQUIRED";
+				$out .= "$v CDATA #REQUIRED";
 			}
-			$txt .= ">\n";
+			$out .= ">\n";
 		}
 	}
-	return $self->{dtd} = $txt;
+	return $self->{dtd} = $out;
 }
 
 sub get_dtd_node {
@@ -1304,7 +1345,7 @@ sub get_dtd_node {
 	if ($node->nodeType == 1) {
 		$name = $node->nodeName;
 	}
-	my $eltxt = '';
+	my @eltxt;
 	my $more = 0;
 	my $i = 0;
 	for my $child ($node->childNodes) {
@@ -1313,15 +1354,11 @@ sub get_dtd_node {
 		$self->get_dtd_node($child, $newpointer, $data);
 		next if $child->nodeType != 1;
 		my $childname = $child->nodeName;
-		if ($eltxt ne '') {
-			$eltxt .= ', ';
-			$more = 1;
-		}
-		$eltxt .= $childname;
+		push @eltxt, $childname;
 		if (not defined $self->{placeholders}
 			or not defined $self->{placeholders}{$newpointer}) {
 			if (exists $self->{ifs}{$newpointer}) {
-				$eltxt .= '?';
+				$eltxt[$#eltxt] .= '?';
 			}
 			next;
 		}
@@ -1335,25 +1372,19 @@ sub get_dtd_node {
 			or $self->{placeholders}{$newpointer}{multiple} eq 'hash') {
 			if (defined $self->{placeholders}{$newpointer}{mandatory}
 				and $self->{placeholders}{$newpointer}{mandatory} eq 'yes') {
-				$eltxt .= '+';
+				$eltxt[$#eltxt] .= '+';
 			} else {
-				$eltxt .= '*';
+				$eltxt[$#eltxt] .= '*';
 			}
 		} elsif ($self->{placeholders}{$newpointer}{mandatory} ne 'yes') {
-			$eltxt .= '?';
+			$eltxt[$#eltxt] .= '?';
 		}
 	}
 	if (defined $name) {
-		if ($eltxt eq '') {
-			$eltxt = '#PCDATA';
-		} elsif ($more) {
-			$eltxt = "($eltxt)";
+		if (not @eltxt) {
+			@eltxt = '#PCDATA';
 		}
-		if ($eltxt ne ''
-			and (not defined $data->{elements}{$name}
-			or not grep { $eltxt eq $_ } @{$data->{elements}{$name}})) {
-			push @{$data->{elements}{$name}}, $eltxt;
-		}
+		push @{$data->{elements}{$name}}, \@eltxt;
 
 		for my $attr ($node->attributes) {
 			$data->{attributes}{$name}{ $attr->nodeName } = 1;
@@ -2015,6 +2046,6 @@ Copyright (c) Jan Pazdziora 2001--2004
 =head1 VERSION
 
 This documentation is believed to describe accurately B<RayApp>
-version 1.145.
+version 1.146.
 
 

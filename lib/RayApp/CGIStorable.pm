@@ -1,12 +1,14 @@
 
 package RayApp::CGIStorable;
-use Storable;
+use Storable ();
+use IO::ScalarArray ();
 
 use vars qw! @params @style_params !;
 
 BEGIN {
 
 	# print STDERR "CGIStorable: [$0] [@ARGV]\n";
+	# print STDERR "Got to CGIStorable\n";
 	# print STDERR map "$_=$ENV{$_}\n", sort keys %ENV;
 
 	# print STDERR "Admit client $ENV{'RAYAPP_INPUT_MODULE'}\n";
@@ -64,7 +66,11 @@ BEGIN {
 
 END {
 	# use Data::Dumper; print STDERR Dumper \@params;
+	my @data;
+	tie *STDOUT, IO::ScalarArray, \@data;
 	my $value = eval { main::handler( @params ) };
+	untie *STDOUT;
+
 	if ($@) {
 		print "Status: 500\nContent-Type: text/plain\n\nError running application $0\n$@";
 		exit;
@@ -74,9 +80,13 @@ END {
 		if (@style_params) {
 			print Storable::freeze([ $value, @style_params ]);
 		} else {
-			print Storable::freeze($value);
+			print Storable::freeze( $value );
 		}
+	} else {
+		print "Status: $value\n";
+		print @data;
 	}
 }
+
 1;
 

@@ -3,9 +3,12 @@ package RayApp::mod_perl_Storable;
 
 use RayApp ();
 use Apache::Response ();
+use Apache::RequestRec ();
 use Apache::SubProcess ();
 use APR::Table ();
 use Apache::Const -compile => qw(OK SERVER_ERROR);
+use Storable ();
+use Config;
 use strict;
                                                                                 
 sub print_errors (@) {
@@ -20,6 +23,8 @@ my $rayapp;
 sub handler {
 	my $r = shift;
 
+=comment
+
 	my $uri;
 	if (defined $ENV{'RAYAPP_DIRECTORY'}
 		and defined $ENV{'PATH_INFO'}) {
@@ -30,6 +35,10 @@ sub handler {
 	if (not defined $uri) {
 		$uri = $ENV{'SCRIPT_FILENAME'};
 	}
+
+=cut
+
+	my $uri = $r->filename();
 	if ($uri =~ m!/$! and defined $ENV{'RAYAPP_DIRECTORY_INDEX'}) {
 		$uri .= $ENV{'RAYAPP_DIRECTORY_INDEX'};
 	}
@@ -41,7 +50,7 @@ sub handler {
 
 	my @stylesheets;
 	my $type;
-	if ($uri =~ s/\.(html|txt)$//) {
+	if ($uri =~ s/\.(html|txt|pdf|fo)$//) {
 		$type = $1;
 		for my $ext ('.dsd', '.xml') {
 			if (-f $uri . $ext) {
@@ -56,20 +65,14 @@ sub handler {
 		} elsif ($type eq 'txt'
 			and defined $ENV{'RAYAPP_TXT_STYLESHEETS'}) {
 			@stylesheets = split /:/, $ENV{'RAYAPP_TXT_STYLESHEETS'};
+		} elsif (($type eq 'pdf' or $type eq 'fo')
+			and defined $ENV{'RAYAPP_FO_STYLESHEETS'}) {
+			@stylesheets = split /:/, $ENV{'RAYAPP_FO_STYLESHEETS'};
 		}
 		if (not @stylesheets) {
 			my $styleuri = $uri;
 			$styleuri =~ s/\.[^\.]+$//;
-			my @exts = ('.xsl', '.xslt');
-			if ($type eq 'txt') {
-				@exts = ('.txtxsl', '.txtxslt');
-			}
-			for my $ext (@exts) {
-				if (-f $styleuri . $ext) {
-					push @stylesheets, $styleuri . $ext;
-					last;
-				}
-			}
+			@stylesheets = RayApp::find_stylesheet($styleuri, $type);
 		}
 	} elsif ($uri =~ /\.xml$/ and not -f $uri) {
 		my $tmpuri = $uri;
@@ -106,13 +109,49 @@ sub handler {
 		}
 	}
 
-	my ($data, $style_params);
-	for ('RAYAPP_INPUT_MODULE', 'RAYAPP_STYLE_PARAMS_MODULE') {
-		if (defined $ENV{$_}) {
+=comment
+
+	for (keys %ENV) {
+		if ($_ ne 'MOD_PERL') {
+			print STDERR "Setting $_ => $ENV{$_}\n";
 			$r->subprocess_env->set($_ => $ENV{$_})
 		}
 	}
-	eval { $data = $rayapp->execute_application_process_storable($application, $dsd->{'uri'}) };
+
+=cut
+
+	my $data;
+	eval {
+		my ($in_fh, $out_fh, $err_fh) = Apache::SubProcess::spawn_proc_prog($r, $Config{perlpath}, [ '-MRayApp::CGIStorable', $application, $dsd->{uri} ]);
+		close $in_fh;
+		my ($value, $err_value);
+
+		if ( $Config{useperlio} ) {
+			$value = join '', <$out_fh>;
+			$err_value = join '', <$err_fh>;
+		} else {
+			my $its_err = 0;
+			while ( IO::Select->new($out_fh)->can_read(10)
+				or ((($its_err = 1) == 1)
+					and IO::Select->new($err_fh)->can_read(10) ) ) {
+				if ($its_err) {
+					$err_value .= <$err_fh>;
+				} else {
+					$value .= <$out_fh>;
+				}
+				$its_err = 0;
+			}
+		}
+		close $out_fh;
+		close $err_fh;
+		print STDERR "Error: ", $err_value if defined $err_value and $err_value ne '';
+		if ($value =~ s!^Content-Type: application/x-perl-storable.*\n\n!!s) {
+			$data = Storable::thaw($value);
+                } else {
+			$data = $value;
+		}
+	};
+	# eval { $data = $rayapp->execute_application_process_storable($application, $dsd->{'uri'}) };
 	if ($@) {
 		$r->content_type('text/plain');
 		print "Broken RayApp setup, failed to run the application, sorry.\n";
@@ -135,6 +174,7 @@ sub handler {
 		return Apache::OK;
 	}
 
+	my $style_params;
 	if (ref $data eq 'ARRAY') {
 		$style_params = [ @{ $data }[ 1 .. $#$data ] ];
 		$data = $data->[0];
@@ -155,7 +195,7 @@ sub handler {
 	} else {
 		my ($output, $media, $charset) = $dsd->serialize_style($data,
 			{
-				( scalar(@$style_params)
+				( ( defined $style_params and scalar(@$style_params))
 					? ( style_params => $style_params )
 					: () ),
 				RaiseError => 0,

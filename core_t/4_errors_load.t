@@ -1,10 +1,14 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl -T
 
-use Test::More 'no_plan';
+use Test::More tests => 59;
+
+use warnings;
+$^W = 1;
+use strict;
 
 BEGIN { use_ok( 'RayApp' ); }
 
-chdir 't' if -d 't';
+chdir 'core_t' if -d 'core_t';
 
 my $rayapp = new RayApp;
 isa_ok($rayapp, 'RayApp');
@@ -334,6 +338,11 @@ is($rayapp->errstr,
 
 $ENV{RAYAPP_ERRORS_IN_BROWSER} = '1';
 $ENV{PERL5OPT} = '-MRayApp::CGIWrapper';
+if (${^TAINT}) {
+	$^X =~ /^(.+)$/ and $^X = $1;
+	delete $ENV{'PATH'};
+	delete $ENV{'BASH_ENV'};
+}
 my $extout = `$^X nonwellformed.xml 2> /dev/null`;
 like($extout, '/Status: 500
 Content-Type: text\/plain

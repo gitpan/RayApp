@@ -1,11 +1,14 @@
+#!/usr/bin/perl -T
 
 #!perl -d:ptkdb
 
-$^W = 1;
-
-use Test::More 'no_plan';
+use Test::More tests => 271;
 use bytes;
 use Cwd ();
+
+use warnings;
+$^W = 1;
+use strict;
 
 BEGIN { use_ok( 'RayApp' ); }
 BEGIN { use_ok( 'POSIX' ); }
@@ -13,22 +16,17 @@ BEGIN { use_ok( 'XML::LibXML' ); }
 
 POSIX::setlocale(POSIX::LC_ALL, 'C');
 
-chdir 't' if -d 't';
-
-
+chdir 'core_t' if -d 'core_t';
 
 my $rayapp = new RayApp;
 isa_ok($rayapp, 'RayApp');
 
 my $dsd;
 
-
-ok($dsd = $rayapp->load_dsd("simple1.xml"),
-	'Loading correct DSD simple1.xml');
+ok($dsd = $rayapp->load_dsd("simple1.xml"), 'Loading correct DSD simple1.xml');
 is($rayapp->errstr, undef, 'Checking that there was no error');
 
-ok($dsd = $rayapp->load_dsd("simple1.xml"),
-	'Loading for the second time');
+ok($dsd = $rayapp->load_dsd("simple1.xml"), 'Loading for the second time');
 is($rayapp->errstr, undef, 'Checking that there was no error');
 
 like($dsd->uri, '/^file:.*simple1.xml$/', 'Checking URI of the DSD');
@@ -39,8 +37,8 @@ is("@{[ sort keys %{ $dsd->params } ]}", "action id",
 	'Checking parameters found');
 
 my $params = $dsd->params;
-is("@{[ map { qq!$_->$params->{$_}{type}! } sort keys %$params ]}",
-	"action->string id->int",
+is("@{[ map { qq!$_:$params->{$_}{type}! } sort keys %$params ]}",
+	"action:string id:int",
 	'Checking parameter types');
 
 is($dsd->out_content, '<?xml version="1.0"?>
@@ -62,6 +60,10 @@ is($txt = $dsd->serialize_data({ 'result' => 56, 'name' => 'Amanda' },
 is($dsd->errstr, undef, 'There should be no errstr');
 
 my $dtd = $dsd->get_dtd;
+is($dtd, '<!ELEMENT application ((name?, result?))>
+<!ELEMENT name (#PCDATA)*>
+<!ELEMENT result (#PCDATA)*>
+', 'Checking the DTD');
 my $parsed_dtd = XML::LibXML::Dtd->parse_string($dtd);
 
 my $parser = XML::LibXML->new();
@@ -199,7 +201,7 @@ like($dsd->uri, '/^file:.*simple3.xml$/', 'Checking URI of the DSD');
 is($dsd->md5_hex, 'e9ff60dcae73d65bda23145346b580df',
 	'Checking MD5 of the DSD');
 
-$out_content = <<'EOF';
+my $out_content = <<'EOF';
 <?xml version="1.0"?>
 <application>
 	<found>
@@ -1534,15 +1536,17 @@ is($dsd->uri, 'md5:e457b01b94cecfcdb25b4e0abf3ca63f',
 
 $out_content = <<'EOF';
 <?xml version="1.0"?>
-<root><v/></root>
+<root>
+  <v/>
+</root>
 EOF
 is($dsd->out_content, $out_content, 'Checking the current content');
 like($dsd->serialize_data({
 	'v' => { -1 => 1, -2 => 2 }
 	}, { RaiseError => 0, validate => 1 }),
 '/^(<\?xml version="1.0"\?>
-<root><v id="-1">1<\\/v><v id="-2">2<\\/v><\\/root>|<\?xml version="1.0"\?>
-<root><v id="-2">2<\\/v><v id="-1">1<\\/v><\\/root>)
+<root>\s*<v id="-1">1<\\/v>\s*<v id="-2">2<\\/v>\s*<\\/root>|<\?xml version="1.0"\?>
+<root>\s*<v id="-2">2<\\/v>\s*<v id="-1">1<\\/v>\s*<\\/root>)
 $/',
 	'Check result serialization');
 is($dsd->errstr, undef, 'Still no error');
@@ -1998,8 +2002,10 @@ is($dsd->errstr, undef, 'Check errstr');
 
 
 
-
 $ENV{RAYAPP_DIRECTORY} = Cwd::getcwd();
+if (${^TAINT}) {
+	$^X =~ /^(.+)$/ and $^X = $1;
+}
 my $extout = `$^X ../blib/script/rayapp_cgi_wrapper script2.dsd`;
 is($extout, 'Status: 200
 Pragma: no-cache

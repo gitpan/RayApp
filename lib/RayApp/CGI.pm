@@ -1,8 +1,10 @@
 
 package RayApp::CGI;
 
-use RayApp ();
 use strict;
+
+use RayApp ();
+use IO::ScalarArray ();
 
 sub print_errors (@) {
 	my $err_in_browser = pop;
@@ -13,26 +15,32 @@ sub print_errors (@) {
 }
 
 sub handler {
+
 	my $uri;
+
+	# The URI can come as an argument on command line ...
 	if (@ARGV) {
 		$uri = shift @ARGV;
-	} elsif (defined $ENV{'RAYAPP_DIRECTORY'}) {
-		$uri = $ENV{'RAYAPP_DIRECTORY'};
-		$uri .= $ENV{'PATH_INFO'} if defined $ENV{'PATH_INFO'};
-		$ENV{'SCRIPT_NAME'} = $ENV{'REQUEST_URI'};
-		delete $ENV{'PATH_INFO'};
-		$ENV{'PATH_TRANSLATED'} = $uri;
-	} else {
-		$uri = $ENV{'SCRIPT_FILENAME'};
-		if (defined $uri and defined $ENV{'SCRIPT_NAME'}) {
-			my ($fnameext) = ($uri =~ /\.(.+?)$/);
-			my ($nameext) = ($ENV{'SCRIPT_NAME'} =~ /\.(.+?)$/);
-			if ($fnameext ne $nameext) {
-				$uri =~ s/\..+?$/.$nameext/;
-			}
-		}
 	}
-	if (not defined $uri) {
+
+	# ... in PATH_INFO in CGI / rayapp_cgi_wrapper ScriptAlias
+	# environment; here RAYAPP_DIRECTORY is needed to do correctly
+	# map the request to filesystem
+	elsif (defined $ENV{RAYAPP_DIRECTORY}) {
+		$uri = $ENV{RAYAPP_DIRECTORY};
+		$uri .= $ENV{PATH_INFO} if defined $ENV{PATH_INFO};
+		$ENV{SCRIPT_NAME} = $ENV{REQUEST_URI};
+		delete $ENV{PATH_INFO};
+		$ENV{PATH_TRANSLATED} = $uri;
+	}
+
+	# ... maybe even PATH_TRANSLATED would work
+	elsif (defined $ENV{PATH_TRANSLATED}) {
+		$uri = $ENV{PATH_TRANSLATED};
+	}
+
+	# ... or the URI is specified as $0, by running the .pl script
+	else {
 		$uri = $0;
 		if ($uri =~ s/\.(mpl|pl)$//) {
 			for my $ext ('.dsd', '.xml') {
@@ -43,14 +51,13 @@ sub handler {
 			}
 		}
 	}
-        ### if (($uri =~ m!/$! or -d $uri)
-        if ($uri =~ m!/$! and defined $ENV{'RAYAPP_DIRECTORY_INDEX'}) {
-                ### $uri .= '/' unless $uri =~ m!/$!;
-                $uri .= $ENV{'RAYAPP_DIRECTORY_INDEX'};
+
+	# If the URI is a directory, we shall use RAYAPP_DIRECTORY_INDEX
+	# to find the application
+        if ($uri =~ m!/$! and defined $ENV{RAYAPP_DIRECTORY_INDEX}) {
+                $uri .= $ENV{RAYAPP_DIRECTORY_INDEX};
         }
 
-
-	# print STDERR "Called RayApp::CGI with uri [$uri]\n";
 
 	my $err_in_browser = ( defined $ENV{'RAYAPP_ERRORS_IN_BROWSER'}
 		and $ENV{'RAYAPP_ERRORS_IN_BROWSER'} );
@@ -73,7 +80,7 @@ sub handler {
 
 	my @stylesheets;
 	my $type;
-	if ($uri =~ s/\.(html|txt)$//) {
+	if ($uri =~ s/\.(html|txt|pdf|fo)$//) {
 		$type = $1;
 		for my $ext ('.dsd', '.xml') {
 			if (-f $uri . $ext) {
@@ -88,20 +95,14 @@ sub handler {
 		} elsif ($type eq 'txt'
 			and defined $ENV{'RAYAPP_TXT_STYLESHEETS'}) {
 			@stylesheets = split /:/, $ENV{'RAYAPP_TXT_STYLESHEETS'};
+		} elsif (($type eq 'pdf' or $type eq 'fo')
+			and defined $ENV{'RAYAPP_FO_STYLESHEETS'}) {
+			@stylesheets = split /:/, $ENV{'RAYAPP_FO_STYLESHEETS'};
 		}
 		if (not @stylesheets) {
 			my $styleuri = $uri;
 			$styleuri =~ s/\.[^\.]+$//;
-			my @exts = ('.xsl', '.xslt');
-			if ($type eq 'txt') {
-				@exts = ('.txtxsl', '.txtxslt');
-			}
-			for my $ext (@exts) {
-				if (-f $styleuri . $ext) {
-					push @stylesheets, $styleuri . $ext;
-					last;
-				}
-			}
+			@stylesheets = RayApp::find_stylesheet($styleuri, $type);
 		}
 	} elsif ($uri =~ /\.xml$/ and not -f $uri) {
 		my $tmpuri = $uri;
@@ -181,7 +182,10 @@ sub handler {
 	}
 
 	my $data;
+	my @stdout;
+	tie *STDOUT, "IO::ScalarArray", \@stdout;
 	eval { $data = $rayapp->execute_application_cgi($application, @params) };
+	untie *STDOUT;
 	if (@params
 		and defined $params[0]
 		and ref $params[0]
@@ -193,7 +197,7 @@ sub handler {
 		print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, failed to run the application, sorry.\n";
 		print_errors "Error executing [$application]\n",
 			$@, $err_in_browser;
-		exit;	
+		exit;
 	}
 
 	if (not ref $data and $data eq '500') {
@@ -204,7 +208,8 @@ sub handler {
 	}
 
 	if (not ref $data) {
-		# handler already sent the response itself
+		print "Status: $data\n";
+		print @stdout;
 		exit;
 	}
 
@@ -236,12 +241,47 @@ sub handler {
 				$dsd->errstr, "\n", $err_in_browser;
 			exit;
 		}
+		if ($type eq 'pdf') {
+			require File::Temp;
+			my $processor = $ENV{'RAYAPP_FO_PROCESSOR'};
+			if (not defined $processor) {
+				$processor = 'fop %IN -pdf %OUT';
+			}
+			my $in = new File::Temp(
+				TEMPLATE => 'rayappXXXXXX',
+				SUFFIX => '.fo',
+				DIR => '/tmp',
+				UNLINK => 0,
+				);
+			my $out = new File::Temp(
+				TEMPLATE => 'rayappXXXXXX',
+				SUFFIX => '.pdf',
+				DIR => '/tmp',
+				UNLINK => 0,
+				);
+			unless ($processor =~ s/%IN/ $in->filename() /ge
+				and $processor =~ s/%OUT/ $out->filename() /ge) {
+				print "Status: 500\nContent-Type: text/plain\n\nBroken RayApp setup, PDF generation failed, sorry.\n";
+				print_errors "Processor line [$processor] has to have both %IN and %OUT\n", $err_in_browser;
+				exit;
+			}
+			print { $in } $output;
+			$in->close();
+			print STDERR "Calling [$processor]\n";
+			system($processor);
+			local $/ = undef;
+			$output = '';
+			while ($out->sysread($output, 4096, length($output))) {}
+			$media = 'application/pdf';
+			$charset = undef;
+		}
 		print "Status: 200\n";
 		if (defined $media) {
 			if (defined $charset) {
 				$media .= "; charset=$charset";
 			}
-			print "Pragma: no-cache\nCache-control: no-cache\n";
+			print "Pragma: no-cache\nCache-control: no-cache\n"
+				if $type ne 'pdf';
 			print "Content-Type: $media\n\n";
 		}
 		print $output;

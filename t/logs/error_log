@@ -1,0 +1,20 @@
+[Sat Aug 21 16:51:59 2004] [info] mod_unique_id: using ip addr 10.0.0.5
+[Sat Aug 21 16:51:59 2004] [info] Init: Initializing OpenSSL library
+[Sat Aug 21 16:51:59 2004] [info] Init: Seeding PRNG with 0 bytes of entropy
+[Sat Aug 21 16:51:59 2004] [info] Init: Generating temporary RSA private keys (512/1024 bits)
+[Sat Aug 21 16:52:00 2004] [info] Init: Generating temporary DH parameters (512/1024 bits)
+[Sat Aug 21 16:52:00 2004] [warn] Init: Session Cache is not configured [hint: SSLSessionCache]
+[Sat Aug 21 16:52:00 2004] [info] Init: Initializing (virtual) servers for SSL
+[Sat Aug 21 16:52:00 2004] [info] Server: Apache/2.0.48, Interface: mod_ssl/2.0.48, Library: OpenSSL/0.9.7a
+[Sat Aug 21 16:52:00 2004] [info] mod_unique_id: using ip addr 10.0.0.5
+[Sat Aug 21 16:52:01 2004] [info] Init: Initializing OpenSSL library
+[Sat Aug 21 16:52:01 2004] [info] Init: Seeding PRNG with 0 bytes of entropy
+[Sat Aug 21 16:52:01 2004] [info] Init: Generating temporary RSA private keys (512/1024 bits)
+[Sat Aug 21 16:52:01 2004] [info] Init: Generating temporary DH parameters (512/1024 bits)
+[Sat Aug 21 16:52:01 2004] [info] Init: Initializing (virtual) servers for SSL
+[Sat Aug 21 16:52:01 2004] [info] Server: Apache/2.0.48, Interface: mod_ssl/2.0.48, Library: OpenSSL/0.9.7a
+[Sat Aug 21 16:52:01 2004] [notice] Apache/2.0.48 (Fedora) mod_perl/1.99_14 Perl/v5.8.3 mod_auth_pgsql/2.0.1 mod_ssl/2.0.48 OpenSSL/0.9.7a configured -- resuming normal operations
+[Sat Aug 21 16:52:01 2004] [info] Server built: Jan 27 2004 09:52:50
+[Sat Aug 21 16:52:01 2004] [debug] /usr/src/build/343414-i386/BUILD/httpd-2.0.48/server/mpm/prefork/prefork.c(1037): AcceptMutex: sysvsem (default: sysvsem)
+[Sat Aug 21 16:52:10 2004] [info] removed PID file /root/RayApp-1.147/t/logs/httpd.pid (pid=7366)
+[Sat Aug 21 16:52:10 2004] [notice] caught SIGTERM, shutting down

@@ -1,6 +1,14 @@
 
 This is change file for RayApp.
 
+1.147 Sat Aug 21 16:49:13 CEST 2004
+	Added tests that run CGI, CGIStorage and mod_perl requests
+	against Apache. Minor code cleanup.
+
+1.146 Sat Jul 17 11:52:32 CEST 2004
+	The code and the tests are now strict, warnings, $^W and taint
+	clean.
+
 1.145 Fri May 28 21:15:09 CEST 2004
 	RayApp: When .html file exists, it is sent as is.
 	RayApp::mod_perl: Added binmode to STDOUT. Fixed handling of

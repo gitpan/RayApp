@@ -1,7 +1,10 @@
+#!/usr/bin/perl -T
 
-#!perl -d:ptkdb
+use Test::More tests => 8;
 
-use Test::More 'no_plan';
+use warnings;
+$^W = 1;
+use strict;
 
 BEGIN { use_ok( 'RayApp' ); }
 

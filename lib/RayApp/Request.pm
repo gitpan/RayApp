@@ -51,13 +51,42 @@ sub url {
 	}
 	$q->{'q'}->url(%opts);
 }
+sub remote_host {
+	$ENV{'REMOTE_HOST'};
+}
+sub remote_addr {
+	$ENV{'REMOTE_ADDR'};
+}
+sub body {
+	return;
+}
+
 
 package RayApp::Request::APR;
 sub new {
 	my ($class, $r) = @_;
+	eval 'use Apache::Filter ();';
+	$r->add_input_filter(\&_storage_filter);
 	eval 'use Apache::Request ()';
-	return bless { r => $r, request => Apache::Request->new($r) }, $class;
+	return bless {
+		r => $r,
+		request => Apache::Request->new($r),
+	}, $class;
 }
+
+sub _storage_filter {
+	my $filter = shift;
+	my $store;
+	while ($filter->read(my $buffer, 1024)) {
+		$filter->print($buffer);
+		$store .= $buffer;
+	}
+	my $orig = $filter->r->pnotes('rayapp_raw_body');
+	$filter->r->pnotes('rayapp_raw_body', $orig . $store);
+	eval 'use Apache::Constants "OK"';
+	return &Apache::OK;
+}
+
 sub user {
 	return shift->{'r'}->user;
 }
@@ -193,6 +222,21 @@ sub url {
 		}
 	}
 	return $uri;
+}
+sub remote_host {
+	my $c = shift->{'r'}->connection;
+	return $c->remote_host();
+}
+sub remote_addr {
+	my $c = shift->{'r'}->connection;
+	my $sock_addr = $c->remote_addr();
+	if (defined $sock_addr) {
+		return $sock_addr->ip_get;
+	}
+	return;
+}
+sub body {
+	shift->{r}->pnotes('rayapp_raw_body');
 }
 
 package RayApp::Request;

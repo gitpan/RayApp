@@ -1,0 +1,41 @@
+
+PerlSwitches -I@ServerRoot@/../lib
+
+SetEnv PERL5LIB @ServerRoot@/../lib
+
+DirectoryIndex index.html
+
+ScriptAliasMatch ^/cgi1(/(.+\.(html|txt|xml|\/))?)?$ @ServerRoot@/../bin/rayapp_cgi_wrapper/$1
+<Location /cgi1>
+	# RAYAPP_DIRECTORY is necessary to achieve the reverse
+	# mapping, it is here instead of Alias
+	SetEnv RAYAPP_DIRECTORY @DocumentRoot@/ray
+	SetEnv RAYAPP_ERRORS_IN_BROWSER 1
+	SetEnv RAYAPP_ENV_DATA mono1
+	SetEnv RAYAPP_DIRECTORY_INDEX app1.html
+</Location>
+
+Alias /cgi2_storable @DocumentRoot@/ray
+<Location /cgi2_storable/>
+	PerlSetEnv RAYAPP_ENV_DATA earth2
+	SetHandler perl-script
+	PerlResponseHandler RayApp::mod_perl_Storable
+	SetEnv RAYAPP_DIRECTORY_INDEX app1.html
+</Location>
+
+Alias /mod_perl1 @DocumentRoot@/ray
+<Location /mod_perl1/>
+	SetEnv RAYAPP_ENV_DATA man5
+	SetHandler perl-script
+	PerlResponseHandler RayApp::mod_perl
+	SetEnv RAYAPP_DIRECTORY_INDEX app1.html
+</Location>
+
+Alias /mod_perl2 @DocumentRoot@/ray
+<Location /mod_perl2/>
+	PerlSetEnv RAYAPP_ENV_DATA mono45
+	SetHandler modperl
+	PerlResponseHandler RayApp::mod_perl
+	PerlSetEnv RAYAPP_DIRECTORY_INDEX app1.html
+</Location>
+

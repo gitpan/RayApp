@@ -1,7 +1,12 @@
+#!/usr/bin/perl -T
 
 #!perl -d:ptkdb
 
-use Test::More 'no_plan';
+use Test::More tests => 59;
+
+use warnings;
+$^W = 1;
+use strict;
 
 BEGIN { use_ok( 'RayApp' ); }
 
@@ -209,7 +214,7 @@ is($rayapp->errstr, undef, 'Checking that there was no error');
 is($dsd->uri, 'md5:e718f4f7df960c87c7ebfdbc16d0008a',
 	'Checking URI/MD5 of the DSD');
 
-$out_content = <<'EOF';
+my $out_content = <<'EOF';
 <?xml version="1.0"?>
 <application>
 	<output>
