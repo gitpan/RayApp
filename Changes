@@ -1,0 +1,43 @@
+
+This is change file for RayApp.
+
+1.110 Wed Dec 10 16:06:15 CET 2003
+	Minor documentation fixes.	
+
+1.100 Sun Sep 14 16:48:02 CEST 2003
+	Documentation aligned with the thesis text.
+
+1.010 Sun Sep  7 11:15:23 CEST 2003
+	Handling of idattr fixed for DTDs.
+
+1.000 Tue Aug 26 21:14:45 CEST 2003
+	Release 1.0, with documentation and tests.
+
+0.950 Sat Aug 23 12:01:13 CEST 2003
+	Internals rewritten using numerical pointers, to allow more
+	flexible handling of attributes.
+
+0.921 Fri Aug 15 17:20:12 CEST 2003
+	Finalization of the API.
+
+0.85 Fri Feb 14 21:07:40 CET 2003
+	Renamed to RayApp. Rewritten using XML::LibXML.
+
+0.44 Sat Jul 28 20:27:50 CEST 2001
+        Configuration of propagate, charset and ReturnXML added.
+
+0.43 Sat Jul 28 18:33:00 CEST 2001
+        Configuration of dbh setting added.
+
+0.42 Sat Jul 28 16:06:05 CEST 2001
+        Configuration of tests made more flexible.
+
+0.40 Fri Jul 27 18:29:38 CEST 2001
+        Packed 0.36 into working distribution.
+
+0.36 Thu Jul 26 20:31:16 CEST 2001
+
+	Named Apache::AxKit::RayApp. The initial public release,
+	tied closely to AxKit.
+
+

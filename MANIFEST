@@ -1,0 +1,27 @@
+Changes
+lib/RayApp.pm
+lib/RayApp/CGIStorable.pm
+Makefile.PL
+MANIFEST			This list of files
+META.yml
+README
+t/1_base.t
+t/2_load.t
+t/3_input_params.t
+t/4_errors_load.t
+t/5_errors_serialize.t
+t/circular1.xml
+t/circular2.xml
+t/example_findpeople.xml
+t/Getfile.pm
+t/person.xml
+t/person1.xml
+t/person2.xml
+t/person3.xml
+t/script1.dsd
+t/script1.pl
+t/script1.xsl
+t/simple1.xml
+t/simple2.xml
+t/simple3.xml
+t/wrong1.xml
