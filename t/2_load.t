@@ -5,6 +5,7 @@ $^W = 1;
 
 use Test::More 'no_plan';
 use bytes;
+use Cwd ();
 
 BEGIN { use_ok( 'RayApp' ); }
 BEGIN { use_ok( 'POSIX' ); }
@@ -14,12 +15,12 @@ POSIX::setlocale(POSIX::LC_ALL, 'C');
 
 chdir 't' if -d 't';
 
+
+
 my $rayapp = new RayApp;
 isa_ok($rayapp, 'RayApp');
 
 my $dsd;
-
-
 
 
 ok($dsd = $rayapp->load_dsd("simple1.xml"),
@@ -493,6 +494,18 @@ is($dsd->serialize_data({
 </application>
 ', 'Checking serializing nonscalar data');
 is($rayapp->errstr, undef, 'Checking that there was no error');
+is($dsd->serialize_data({ }), '<?xml version="1.0"?>
+<application>
+</application>
+', 'Serialize data with no people');
+is($rayapp->errstr, undef, 'No errstr');
+is($dsd->serialize_data({
+	people => [],
+ }), '<?xml version="1.0"?>
+<application>
+</application>
+', 'Serialize data with empty people');
+is($rayapp->errstr, undef, 'No errstr');
 
 
 
@@ -1038,6 +1051,7 @@ is($dsd->serialize_data({
 ', 'Checking serialization with condition matched');
 is($dsd->errstr, undef, 'Is errstr still cool?');
 
+
 is($dsd->serialize_data({
 	'result' => 12,
 	'name' => 16,
@@ -1176,6 +1190,52 @@ is($dsd->serialize_data({
 </g>
 ', 'Checking serialization with simple simple list');
 is($rayapp->errstr, undef, 'Checking no error message');
+
+
+
+
+
+
+ok($dsd = $rayapp->load_dsd_string('<?xml version="1.0"?>
+<g>
+	<p if="a">
+		<a multiple="list" />
+	</p>
+</g>
+'), 'Loading correct DSD with condition about list');
+is($rayapp->errstr, undef, 'Checking that there was no error');
+is($dsd->uri, 'md5:70d800af3565547031ed2725556abdcd',
+        'Checking URI/MD5 of the DSD');
+is($dsd->serialize_data({
+        'a' => [ 1, "45", 45, "Amanda" ],
+}, { RaiseError => 0, validate => 1 }), '<?xml version="1.0"?>
+<g>
+	<p>
+		<a>1</a>
+		<a>45</a>
+		<a>45</a>
+		<a>Amanda</a>
+	</p>
+</g>
+', 'Checking serialization with simple list');
+is($rayapp->errstr, undef, 'Checking no error message');
+                                                                                                                                                                   
+is($dsd->serialize_data({
+        'a' => [ ],
+}, { RaiseError => 0, validate => 1 }), '<?xml version="1.0"?>
+<g>
+</g>
+', 'Checking serialization with empty list');
+is($rayapp->errstr, undef, 'Checking no error message');
+                                                                                                                                                                   
+is($dsd->serialize_data({
+}, { RaiseError => 0, validate => 1 }), '<?xml version="1.0"?>
+<g>
+</g>
+', 'Checking serialization with undef list');
+is($rayapp->errstr, undef, 'Checking no error message');
+                                                                                                                                                                   
+                                                                                                                                                                   
 
 ok($dsd = $rayapp->load_dsd_string('<?xml version="1.0"?>
 <g>
@@ -1596,13 +1656,84 @@ is($rayapp->errstr, undef, 'Checking that there was no error');
 
 
 
+ok($dsd = $rayapp->load_dsd_string('<?xml version="1.0"?>
+<root application="1" xmlns="urn:x-x">
+	<html:b xmlns:html="http://www.w3.org/1999/xhtml" />
+	<s type="struct"><mb/></s>
+</root>
+'), 'Loading DSD with hashes with namespaces');
+is($rayapp->errstr, undef, 'Checking that there was no error');
+
+is($dsd->uri, 'md5:170ef84d02264e6c7b0b8169365e31d5',
+	'Checking URI/MD5 of the DSD');
+
+is($dsd->out_content, '<?xml version="1.0"?>
+<root xmlns="urn:x-x">
+	<html:b xmlns:html="http://www.w3.org/1999/xhtml"/>
+	<s><mb/></s>
+</root>
+', 'Checking the current content');
+is($dsd->serialize_data({
+	'html:b' => 'X',
+	s => { mb => 34 },
+	}, { RaiseError => 0, validate => 1 }),
+'<?xml version="1.0"?>
+<root xmlns="urn:x-x">
+	<html:b xmlns:html="http://www.w3.org/1999/xhtml">X</html:b>
+	<s><mb>34</mb></s>
+</root>
+', 'Serialization with data with colons');
+is($rayapp->errstr, undef, 'No error still?');
+
+
+ok($dsd = $rayapp->load_dsd('create_domain.dsd'),
+	'Loading DSD for CZ-NIC create domain command');
+is($rayapp->errstr, undef, 'Check errstr');
+is($dsd->serialize_data({
+	'dsdDomain:name' => 'asdf.cz',
+	'dsdDomain:description' => 'The ASDF is core of it all',
+	'dsdDomain:idadm' => 'ASDF',
+	'dsdDomain:idtech' => 'ASDF',
+	'dsdDomain:period' => 2,
+	'dsdDomain:nserver' => [
+		[ 'ns.asdf.cz', [ '111.111.111.111', '222.222.222.222' ], 'P' ],
+		[ 'ns.server.cz', undef, 'S' ],
+		],
+	'clTRID' => 'Ticket-1',
+	}, { RaiseError => 0, validate => 1 }),
+'<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<epp xmlns="urn:ietf:params:xml:ns:epp-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:ietf:params:xml:ns:epp-1.0 epp-1.0.xsd">
+  <command>
+    <create>
+      <dsdDomain:create xmlns:dsdDomain="urn:cznic:params:xml:ns:dsdDomain-1.0" xsi:schemaLocation="urn:cznic:params:xml:ns:dsdDomain-1.0 dsdDomain-1.0.xsd">
+        <dsdDomain:name>asdf.cz</dsdDomain:name>
+        <dsdDomain:description>The ASDF is core of it all</dsdDomain:description>
+        <dsdDomain:idadm>ASDF</dsdDomain:idadm>
+        <dsdDomain:idtech>ASDF</dsdDomain:idtech>
+        <dsdDomain:period unit="y">2</dsdDomain:period>
+        <dsdDomain:dns>
+          <dsdDomain:nserver>
+            <dsdDomain:ns>ns.asdf.cz</dsdDomain:ns>
+            <dsdDomain:IPaddress ip="v4">111.111.111.111</dsdDomain:IPaddress>
+            <dsdDomain:IPaddress ip="v4">222.222.222.222</dsdDomain:IPaddress>
+            <dsdDomain:typ>P</dsdDomain:typ>
+          </dsdDomain:nserver>
+          <dsdDomain:nserver>
+            <dsdDomain:ns>ns.server.cz</dsdDomain:ns>
+            <dsdDomain:typ>S</dsdDomain:typ>
+          </dsdDomain:nserver>
+        </dsdDomain:dns>
+      </dsdDomain:create>
+    </create>
+    <clTRID>Ticket-1</clTRID>
+  </command>
+</epp>
+', 'Serialization with domain data');
+is($rayapp->errstr, undef, 'No error still?');
 
 
 
-
-
-
-is(scalar keys %{ $rayapp->{uris} }, 31,
+is(scalar keys %{ $rayapp->{uris} }, 34,
 	'Total number of distinct URIs processed');
 
 
@@ -1685,7 +1816,7 @@ my $results = $style->transform($outxml);
 ok($results, 'Running transformation');
 is($results->toString, '<?xml version="1.0"?>
 <html><head><title/></head><body><h1>A list of students</h1><p>
-Study program: 
+Study program:
 <b>Biology</b>
 (<tt>8234B</tt>)
 </p><ul>
@@ -1763,7 +1894,7 @@ $results = $style->transform($outxml);
 ok($results, 'Running transformation');
 is($results->toString, '<?xml version="1.0" standalone="yes"?>
 <html><head><title/></head><body><h1>A list of students</h1><p>
-Study program: 
+Study program:
 <b>Biology</b>
 (<tt>8234B</tt>)
 </p><ul>
@@ -1792,7 +1923,7 @@ $results = $style->transform($outxml);
 ok($results, 'Running transformation');
 is($results->toString, '<?xml version="1.0" standalone="yes"?>
 <html><head><title/></head><body><h1>A list of students</h1><p>
-Study program: 
+Study program:
 <b>Biology</b>
 (<tt>8234B</tt>)
 </p><ul>
@@ -1821,7 +1952,7 @@ $results = $style->transform($outxml);
 ok($results, 'Running transformation');
 is($results->toString, '<?xml version="1.0" standalone="yes"?>
 <html><head><title/></head><body><h1>A list of students</h1><p>
-Study program: 
+Study program:
 <b>Biology</b>
 (<tt>8234B</tt>)
 </p><ul>
@@ -1841,13 +1972,190 @@ my $out = $dsd->serialize_style(
 	program => [ 2534, 'X' ],
 	students => [ [ 'A', 'B' ] ],
 	}, {}, 'script1.xsl');
-is($out, '<?xml version="1.0"?>
-<html><head><title/></head><body><h1>A list of students</h1><p>
-Study program: 
+is($out, '<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title></title>
+</head>
+<body>
+<h1>A list of students</h1>
+<p>
+Study program:
 <b></b>
 (<tt>X</tt>)
-</p><ul>
+</p>
+<ul>
 		<li>B A</li>
-	</ul></body></html>
+	</ul>
+</body>
+</html>
 ', 'Serializing and styling');
+is($dsd->errstr, undef, 'Check errstr');
+
+
+
+
+$ENV{RAYAPP_DIRECTORY} = Cwd::getcwd();
+my $extout = `$^X ../blib/script/rayapp_cgi_wrapper script2.dsd`;
+is($extout, 'Status: 200
+Content-Type: text/xml
+
+<?xml version="1.0" standalone="yes"?>
+<list>
+	<students>
+		<student>
+			<lastname>Peter</lastname>
+			<firstname>Wolf</firstname>
+		</student>
+		<student>
+			<lastname>Brian</lastname>
+			<firstname>Fox</firstname>
+		</student>
+		<student>
+			<lastname>Leslie</lastname>
+			<firstname>Child</firstname>
+		</student>
+		<student>
+			<lastname>Barbara</lastname>
+			<firstname>Bailey</firstname>
+		</student>
+		<student>
+			<lastname>Russell</lastname>
+			<firstname>King</firstname>
+		</student>
+		<student>
+			<lastname>Michael</lastname>
+			<firstname>Johnson</firstname>
+		</student>
+		<student>
+			<lastname>Michael</lastname>
+			<firstname>Shell</firstname>
+		</student>
+		<student>
+			<lastname>Tim</lastname>
+			<firstname>Jasmine</firstname>
+		</student>
+	</students>
+
+	<program>
+		<id>1523</id>
+		<code>8234B</code>
+		<name>Biology</name>
+	</program>
+</list>
+', 'Running rayapp_cgi_wrapper');
+
+
+
+
+$extout = `../blib/script/rayapp_cgi_wrapper script2.dsd`;
+is($extout, 'Status: 200
+Content-Type: text/xml
+
+<?xml version="1.0" standalone="yes"?>
+<list>
+	<students>
+		<student>
+			<lastname>Peter</lastname>
+			<firstname>Wolf</firstname>
+		</student>
+		<student>
+			<lastname>Brian</lastname>
+			<firstname>Fox</firstname>
+		</student>
+		<student>
+			<lastname>Leslie</lastname>
+			<firstname>Child</firstname>
+		</student>
+		<student>
+			<lastname>Barbara</lastname>
+			<firstname>Bailey</firstname>
+		</student>
+		<student>
+			<lastname>Russell</lastname>
+			<firstname>King</firstname>
+		</student>
+		<student>
+			<lastname>Michael</lastname>
+			<firstname>Johnson</firstname>
+		</student>
+		<student>
+			<lastname>Michael</lastname>
+			<firstname>Shell</firstname>
+		</student>
+		<student>
+			<lastname>Tim</lastname>
+			<firstname>Jasmine</firstname>
+		</student>
+	</students>
+
+	<program>
+		<id>1523</id>
+		<code>8234B</code>
+		<name>Biology</name>
+	</program>
+</list>
+', 'Running RayApp::CGI without stylesheets');
+
+$ENV{RAYAPP_HTML_STYLESHEETS} = 'script1.xsl';
+$extout = `../blib/script/rayapp_cgi_wrapper script1.html`;
+is($extout, 'Status: 200
+Content-Type: text/html; charset=utf-8
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title></title>
+</head>
+<body>
+<h1>A list of students</h1>
+<p>
+Study program:
+<b>Biology</b>
+(<tt>8234B</tt>)
+</p>
+<ul>
+		<li>Wolf Peter</li>
+		<li>Fox Brian</li>
+		<li>Child Leslie</li>
+		<li>Bailey Barbara</li>
+		<li>King Russell</li>
+		<li>Johnson Michael</li>
+		<li>Shell Michael</li>
+		<li>Jasmine Tim</li>
+	</ul>
+</body>
+</html>
+', 'Running RayApp::CGI with implicit stylesheet');
+
+$ENV{RAYAPP_HTML_STYLESHEETS} = 'script1.xsl';
+$extout = `../blib/script/rayapp_cgi_wrapper script2.html`;
+is($extout, 'Status: 200
+Content-Type: text/html; charset=utf-8
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title></title>
+</head>
+<body>
+<h1>A list of students</h1>
+<p>
+Study program:
+<b>Biology</b>
+(<tt>8234B</tt>)
+</p>
+<ul>
+		<li>Wolf Peter</li>
+		<li>Fox Brian</li>
+		<li>Child Leslie</li>
+		<li>Bailey Barbara</li>
+		<li>King Russell</li>
+		<li>Johnson Michael</li>
+		<li>Shell Michael</li>
+		<li>Jasmine Tim</li>
+	</ul>
+</body>
+</html>
+', 'Running RayApp::CGI with a stylesheet');
 

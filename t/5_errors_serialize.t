@@ -65,7 +65,6 @@ is($dsd->serialize_data({ 'value' => { id => 1, name => 1, list => [ ], } },
 		<value>
 			<id>1</id>
 			<name>1</name>
-			<list/>
 		</value>
 	</x>
 </application>

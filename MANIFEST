@@ -1,6 +1,11 @@
+bin/rayapp_cgi_wrapper.PL
 Changes
 lib/RayApp.pm
+lib/RayApp/CGI.pm
 lib/RayApp/CGIStorable.pm
+lib/RayApp/CGIWrapper.pm
+lib/RayApp/mod_perl.pm
+lib/RayApp/Request.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml
@@ -12,8 +17,10 @@ t/4_errors_load.t
 t/5_errors_serialize.t
 t/circular1.xml
 t/circular2.xml
+t/create_domain.dsd
 t/example_findpeople.xml
 t/Getfile.pm
+t/nonwellformed.xml
 t/person.xml
 t/person1.xml
 t/person2.xml
@@ -21,6 +28,7 @@ t/person3.xml
 t/script1.dsd
 t/script1.pl
 t/script1.xsl
+t/script2.dsd
 t/simple1.xml
 t/simple2.xml
 t/simple3.xml

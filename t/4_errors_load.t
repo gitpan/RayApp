@@ -1,4 +1,4 @@
-#!/usr/bin/perl -Tw
+#!/usr/bin/perl -w
 
 use Test::More 'no_plan';
 
@@ -15,6 +15,11 @@ is($rayapp->load_dsd("jezek:///krtek/"), undef,
 	'Loading DSD with invalid protocol');
 like($rayapp->errstr, '/protocol/i',
 	'Checking error message for bad protocol');
+
+is($rayapp->load_dsd("nonwellformed.xml"), undef,
+	'Loading non-well-formed DSD');
+like($rayapp->errstr, '/tag/i',
+	'Checking error message for bad-formed XML');
 
 
 is($rayapp->load_dsd('http://www.thisdomainhopefullydoesntexist.domain/file.xml'),
@@ -325,4 +330,16 @@ is($rayapp->load_dsd_string('<?xml version="1.0"?>
 is($rayapp->errstr,
 	'Unsupported attribute if in data engine at line 6',
 	'Checking errstr');
+
+
+$ENV{RAYAPP_ERRORS_IN_BROWSER} = '1';
+$ENV{PERL5OPT} = '-MRayApp::CGIWrapper';
+my $extout = `$^X nonwellformed.xml 2> /dev/null`;
+like($extout, '/Status: 500
+Content-Type: text\/plain
+
+Broken RayApp setup, failed to load DSD, sorry\.
+Loading DSD \[nonwellformed\.xml\] failed: Entity: line 6: error: Opening and ending tag mismatch: a line 4 and b/',
+	'Check');
+
 

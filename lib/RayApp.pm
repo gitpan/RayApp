@@ -3,7 +3,7 @@ package RayApp;
 use strict;
 use URI::file ();
 
-$RayApp::VERSION = '1.110';
+$RayApp::VERSION = '1.136';
 
 sub new {
 	my $class = shift;
@@ -51,6 +51,10 @@ sub load_user_agent {
 use Digest::MD5 ();
 sub load_dsd_uri {
 	my ($self, $uri) = @_;
+	if (defined $self->{'cache'} and $self->{'cache'}
+		and defined $self->{uris}{$uri}) {
+		return $self->{uris}{$uri};
+	}
 	if (not defined $self->{ua}) {
 		$self->load_user_agent();
 	}
@@ -264,8 +268,31 @@ sub removeChildNodeNicely {
 	$node->removeChild($child);
 }
 
+sub execute_application_cgi {
+	my ($self, $application, @params) = @_;
+	$self->{errstr} = undef;
+	if (ref $application) {
+		$application = $application->application_name;
+	}       
+	my $ret = eval {
+		if (not defined $application) {
+			die "Application name was not defined\n";
+		}
+		require $application;
+		return &handler(@params);
+	};
+	if ($@) {
+		print STDERR $@;
+		my $errstr = $@;
+		$errstr =~ s/\n$//;
+		$self->{errstr} = $errstr;
+		return 500;
+	}
+	return $ret;
+}
+
 sub execute_application_handler {
-	my ($self, $application) = @_;
+	my ($self, $application, @params) = @_;
 	$self->{errstr} = undef;
 	if (ref $application) {
 		$application = $application->application_name;
@@ -292,7 +319,7 @@ sub execute_application_handler {
 			handler => $handler,
 		};
 		no strict;
-		return &{ $handler };
+		return &{ $handler }(@params);
 	};
 	if ($@) {
 		print STDERR $@;
@@ -305,9 +332,8 @@ sub execute_application_handler {
 }
 
 sub execute_application_handler_reuse {
-	my $self = shift;
+	my ($self, $application, @params) = @_;
 	$self->{errstr} = undef;
-	my $application = shift;
 	if (ref $application) {
 		$application = $application->application_name;
 	}       
@@ -344,7 +370,7 @@ sub execute_application_handler_reuse {
 			};
 		}
 		no strict;
-		return &{ $handler };
+		return &{ $handler }(@params);
 	};
 	if ($@) {
 		print STDERR $@;
@@ -357,9 +383,8 @@ sub execute_application_handler_reuse {
 }
 
 sub execute_application_process_storable {
-	my $self = shift;
+	my ($self, $application) = @_;
 	$self->{errstr} = undef;
-	my $application = shift;
 	if (ref $application) {
 		$application = $application->application_name;
 	}       
@@ -453,6 +478,23 @@ sub remove_children_from_leaf {
 	return 1;
 }
 
+sub clone_node {
+	my $node = shift;
+	my $new = $node->cloneNode(0);
+	$new->setNodeName($node->nodeName);
+	my $child = $node->firstChild;
+	while (defined $child) {
+		my $new_child = clone_node($child);
+		$new->addChild($new_child);
+		$child = $child->nextSibling;
+	}
+	for my $a ($node->attributes) {
+		next if not defined $a;
+		$new->setAttribute($a->nodeName, $a->getValue);
+	}
+	return $new;
+}
+
 sub tidy_dsd_dom {
 	my ($self, $node, $pointer, $inside_placeholder,
 		$copy_attribs_in, $translate_attribs_in) = @_;
@@ -495,6 +537,7 @@ sub tidy_dsd_dom {
 
 		my %attributes = ();
 		for my $attr ( $node->attributes ) {
+			next if $attr->nodeType != 2;
 			$attributes{ $attr->nodeName } = $attr->getValue;
 		}
 
@@ -615,7 +658,9 @@ sub tidy_dsd_dom {
 
 			if ($o{'multiple'} eq 'listelement') {
 				for my $child ($node->childNodes) {
-					if ($child->nodeType == 1) {
+					if ($child->nodeType == 1
+						and $child->nodeName ne '_param'
+						and $child->nodeName ne '_data') {
 						$child->setAttribute('multiple',
 							'list');
 					}
@@ -657,6 +702,7 @@ sub tidy_dsd_dom {
 			next if $k eq 'idattr' and $inside_placeholder;
 			next if $is_root and $k eq 'application';
 			next if $is_leaf and $k eq 'typeref';
+			next if $k =~ /^xml/i;
 			die "Unsupported attribute $k at line $ln\n";
 		}
 	}
@@ -697,6 +743,9 @@ sub param_prefixes {
 
 sub application_name {
 	my $self = shift;
+	if (not defined $self->{application}) {
+		return;
+	}
 	my $uri = URI->new_abs($self->{application}, $self->{uri});
 	if (not $uri =~ s/^file://) {
 		return;
@@ -815,10 +864,14 @@ sub bind_data {
 				$indent = $1;
 			}
 		}
+		if (@{$data} == 0) {
+			RayApp::removeChildNodeNicely($parent, $node);
+		}
 		for (my $i = 0; $i < @{$data}; $i++) {
 			my $work = $node;
 			if ($i < $#{$data}) {
-				$work = $node->cloneNode(1);
+				# $work = $node->cloneNode(1);
+				$work = clone_node($node);
 				$parent->insertBefore($work, $node);
 				if (defined $indent) {
 					$parent->insertBefore(
@@ -845,6 +898,9 @@ sub bind_data {
 			}
 		}
 		my $numkeys = keys %$data;
+		if ($numkeys == 0) {
+			RayApp::removeChildNodeNicely($parent, $node);
+		}
 		my $i = 0;
 		for my $key (sort {
 			my $r = 0;
@@ -857,9 +913,11 @@ sub bind_data {
 			}
 			return $r;
 			} keys %$data) {
+
 			my $work = $node;
 			if ($i < $numkeys - 1) {
-				$work = $node->cloneNode(1);
+				# $work = $node->cloneNode(1);
+				$work = clone_node($node);
 				$parent->insertBefore($work, $node);
 				if (defined $indent) {
 					$parent->insertBefore(
@@ -931,9 +989,9 @@ sub bind_data {
 				}
 			}
 		} elsif (ref $data eq 'ARRAY') {
-			if ($i <= $#$data) {
-				my $view = $i;
-				if ($i < $#$data) {
+			if ($arrayi <= $#$data) {
+				my $view = $arrayi;
+				if ($arrayi < $#$data) {
 					$view .= "..$#$data";
 				}
 				$self->{errstr} .= "Data $showname\[$view] does not match data structure description\n";
@@ -950,6 +1008,7 @@ sub bind_data {
 	} else {
 		die "We shouldn't have got here, " . $node->toString;
 	}
+	return 1;
 }
 
 sub serialize_data_node {
@@ -959,10 +1018,26 @@ sub serialize_data_node {
 			$data->{$spec->{'name'}}, "{$spec->{'name'}}", 0);
 		return;
 	} elsif (exists $self->{'ifs'}{$pointer}) {
-		if ($self->{'ifs'}{$pointer}[0] eq 'if'
-			and not $data->{$self->{'ifs'}{$pointer}[1]}) {
-			RayApp::removeChildNodeNicely($node->parentNode, $node);
-			return;
+		if ($self->{'ifs'}{$pointer}[0] eq 'if') {
+			if (not defined $data->{$self->{'ifs'}{$pointer}[1]}) {
+				RayApp::removeChildNodeNicely($node->parentNode, $node);
+				return;
+			}
+			if (not ref $data->{$self->{'ifs'}{$pointer}[1]}
+				and not $data->{$self->{'ifs'}{$pointer}[1]}) {
+				RayApp::removeChildNodeNicely($node->parentNode, $node);
+				return;
+			}
+			if (ref $data->{$self->{'ifs'}{$pointer}[1]} eq 'ARRAY'
+				and not @{ $data->{$self->{'ifs'}{$pointer}[1]} }) {
+				RayApp::removeChildNodeNicely($node->parentNode, $node);
+				return;
+			}
+			if (ref $data->{$self->{'ifs'}{$pointer}[1]} eq 'HASH'
+				and not keys %{ $data->{$self->{'ifs'}{$pointer}[1]} }) {
+				RayApp::removeChildNodeNicely($node->parentNode, $node);
+				return;
+			}
 		} elsif ($self->{'ifs'}{$pointer}[0] eq 'ifdef'
 			and not defined $data->{$self->{'ifs'}{$pointer}[1]}) {
 			RayApp::removeChildNodeNicely($node->parentNode, $node);
@@ -988,8 +1063,25 @@ sub serialize_data_node {
 }
 
 use XML::LibXSLT ();
+use Encode ();
 sub serialize_style_dom {
 	my ($self, $data, $opts) = ( shift, shift, shift );
+
+	my $as_string = delete $opts->{'style_as_string'};
+	my @style_params;
+	if (defined $opts->{'style_params'}
+		and ref $opts->{'style_params'}) {
+		if (ref $opts->{'style_params'} eq 'HASH') {
+			@style_params = XML::LibXSLT::xpath_to_string(
+				%{ $opts->{'style_params'} }
+			);
+		} elsif (ref $opts->{'style_params'} eq 'ARRAY') {
+			@style_params = XML::LibXSLT::xpath_to_string(
+				@{ $opts->{'style_params'} }
+			);
+		}
+		delete $opts->{'style_params'};
+	}
 
 	my $outdom = eval { $self->serialize_data_dom($data, $opts) };
 	if ($@) {
@@ -998,34 +1090,62 @@ sub serialize_style_dom {
 
 	my $rayapp = $self->{rayapp};
 
+	my $style;
 	for my $stylesheet (@_) {
-		my $style = $rayapp->{stylesheets}{$stylesheet};
+		$style = $rayapp->{stylesheets}{$stylesheet};
 		if (not defined $style) {
 			my $xslt = $rayapp->{xsltparser};
 			if (not defined $xslt) {
 				$xslt = $rayapp->{xsltparser} = new XML::LibXSLT;
 			}
-			$style = $rayapp->{stylesheets}{$stylesheet} = $xslt->parse_stylesheet_file($stylesheet);
+			$rayapp->{stylesheets}{$stylesheet} = $style
+				= eval { $xslt->parse_stylesheet_file($stylesheet) };
+			if ($@ or not defined $style) {
+				$self->{'errstr'} = $@;
+				return;
+			}
 		}
-		$outdom = $style->transform($outdom);
+		$outdom = eval { $style->transform($outdom, @style_params) };
+		if ($@) {
+			$self->{'errstr'} = $@;
+			return;
+		}
+		if (not defined $outdom) {
+			$self->{'errstr'} = "Stylesheet [$stylesheet] returned empty result\n";
+			return;
+		}
+	}
+	if (defined $as_string and $as_string) {
+		if (defined $style) {
+			my $out = $style->output_string($outdom);
+			if (${^UNICODE}) {
+				return Encode::decode('utf8', $out,	
+							Encode::FB_DEFAULT);
+			} else {
+				return $out;
+			}
+		} else {
+			return;
+		}
 	}
 	return $outdom;
 }
 
 sub serialize_style {
-	my $self = shift;
-	my $outdom = $self->serialize_style_dom(@_);
-	return $outdom->toString;
+	my ($self, $data, $opts) = ( shift, shift, shift );
+	$opts->{'style_as_string'} = 1;
+	return $self->serialize_style_dom($data, $opts, @_);
 }
 
 sub validate_parameters {
 	my $self = shift;
 	$self->{errstr} = '';
 	my %params;
+
 	if (defined $_[0] and ref $_[0]) {
-		if (eval { $_[0]->isa("param") } and not $@) {
+		if (eval { $_[0]->can("param") } and not $@) {
 			for my $name ($_[0]->param) {
-				$params{$name} = $_[0]->param($name);
+				$params{$name} = [ $_[0]->param($name) ];
 			}
 		} else {
 			%params = %{ $_[0] };
@@ -1036,6 +1156,8 @@ sub validate_parameters {
 			push @{ $params{$k} }, $v;
 		}
 	}
+
+	# use Data::Dumper; print STDERR Dumper \%params;
 
 	for my $k (sort keys %params) {
 		my $check = $self->{param}{$k};
@@ -1262,6 +1384,10 @@ behaviour:
 
 The base URI, used for all URI resolutions.
 
+=item cache
+
+When set to true value, will cache loaded DSD's and stylesheets.
+
 =item ua_options
 
 Options that will be send to LWP::UserAgent constructor. See LWP
@@ -1443,6 +1569,9 @@ of B<RayApp::DSD> object.
 When the B<RayApp::DSD> is passed as an argument, the application name
 is derived the standard way, from the B<application> attribute of the
 root element of the DSD.
+
+Any additional parameters to B<execute_application*> methods are
+passed over to the handler methods of the loaded application.
 
 The application can also be invoked in a separate process, using
 B<execute_application_process_storable> method. The data of the
@@ -1626,6 +1755,6 @@ Copyright (c) Jan Pazdziora 2001--2003
 =head1 VERSION
 
 This documentation is believed to describe accurately B<RayApp>
-version 1.110.
+version 1.120.
 
 

@@ -16,7 +16,7 @@
 
 <xsl:template match="/list/program">
 <p>
-Study program: 
+Study program:
 <b><xsl:value-of select="name"/></b>
 (<tt><xsl:value-of select="code"/></tt>)
 </p>
