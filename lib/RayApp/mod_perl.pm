@@ -2,20 +2,17 @@
 package RayApp::mod_perl;
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
-use Apache::Const -compile => qw(
-	OK SERVER_ERROR DECLINED NOT_FOUND REDIRECT
-	:log
-	);
-use Apache::Log ();
+use Apache2::Const qw( OK SERVER_ERROR DECLINED NOT_FOUND :log );
+use Apache2::Log ();
 use APR::Const    -compile => qw(:error SUCCESS);
-use Apache::RequestIO ();
-use Apache::RequestRec ();
-use Apache::RequestUtil ();
+use Apache2::RequestIO ();
+use Apache2::RequestRec ();
+use Apache2::RequestUtil ();
 use APR::Table ();
-use Apache::Response ();
-use Apache::URI ();
+use Apache2::Response ();
+use Apache2::URI ();
 
 use RayApp ();
 use IO::ScalarArray;
@@ -54,7 +51,7 @@ my $rayapp;
 sub handler {
 
 	# This is run as PerlResponseHandler, so the first argument
-	# is Apache::RequestRec
+	# is Apache2::RequestRec
 
 	my $r = shift;
 
@@ -70,7 +67,8 @@ sub handler {
 
 	my $uri = $r->uri();		# we just use uri for logging
 	my $filename = $r->filename();
-	my ($xml, $dom, @params);
+	my ($xml, $dom, @params, @stylesheets);
+
 	my %stylesheets_params;
 
 	my ($translate, $translate_source);
@@ -110,7 +108,8 @@ sub handler {
 			$r->content_type('text/plain');
 			$r->print("Failed to proxy to backend for [$uri]\n");
 			$r->log_error("RayApp::mod_perl: uri [$uri] proxy [$translate] not valid");
-			return Apache::SERVER_ERROR;
+			$r->status(Apache2::Const::SERVER_ERROR());
+			return Apache2::Const::OK();
 		}
 		if ($translate_source =~ m!\.([^./]+)$!) {
 			$ext = $1;	# this tells us postprocessing type
@@ -150,29 +149,36 @@ sub handler {
 		}
 		# $r->log_error("   > constructed base [$request_uri] loading [$load_uri]");
 		$r->log_error("RayApp::mod_perl proxy [$uri] to [$load_uri] in pid $$");
+		my $authorization = $r->headers_in->{'Authorization'};
 
 		if (not defined $ext or $ext eq 'xml') {
 			$xml = $rayapp->load_uri($load_uri,
 					method => $r->method,
 					want_404 => 1,
+					want_401 => 1,
+					authorization_header => $authorization,
 					%post_opts,
 				) or do {
 				$r->print("Failed to proxy to backend for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] proxy [$translate] failed: " . $rayapp->errstr);
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			};
 		} else {
 			$xml = $rayapp->load_xml($load_uri,
 					method => $r->method,
 					want_404 => 1,
+					want_401 => 1,
 					frontend_ext => $ext,
 					frontend_uri => $request_uri,
+					authorization_header => $authorization,
 					%post_opts,
 				) or do {
 				$r->content_type('text/plain');
 				$r->print("Failed to proxy to backend for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] proxy [$translate] failed: " . $rayapp->errstr);
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			};
 		}
 		if (defined $xml->redirect_location) {
@@ -181,16 +187,27 @@ sub handler {
 			$r->content_type($xml->content_type);
 
 			$r->print( $xml->content );
-			return Apache::OK;
+			return Apache2::Const::OK();
 		}
 		if ($xml->status eq '404') {
 			# $r->notes->set('error-notes', "Testing");
 			$r->log_error("Returning data backend's 404");
-			return Apache::NOT_FOUND;
+			return Apache2::Const::NOT_FOUND();
+		}
+		if ($xml->status eq '401') {
+			# $r->notes->set('error-notes', "Testing");
+			$r->log_error("Need to authenticate");
+			$r->status($xml->status);
+			$r->headers_out->{'WWW-Authenticate'} = $xml->www_authenticate;
+			$r->content_type($xml->content_type);
+
+			$r->print( $xml->content );
+			return Apache2::Const::OK();
 		}
 		if ($xml->stylesheet_params) {
 			%stylesheets_params = $xml->stylesheet_params;
 		}
+		@stylesheets = $xml->find_stylesheets($ext);
 	}
 
 	else {
@@ -205,7 +222,7 @@ sub handler {
 			# FIXME: we might have some own resolution mechanism
 			# though
 
-			return Apache::DECLINED;
+			return Apache2::Const::DECLINED();
 		}
 
 		if ($filename =~ m!/$!) {
@@ -222,7 +239,7 @@ sub handler {
 				# We did not find a way to get decent URI
 
 				$r->log_error("No RayAppDirectoryIndex");
-				return Apache::DECLINED;
+				return Apache2::Const::DECLINED();
 			}
 			$filename .= $index;
 			$r->filename($filename);
@@ -234,12 +251,13 @@ sub handler {
 
 			$r->log_error("RayApp::mod_perl: info: serving local file [$filename] for [$uri] in pid $$");
 			$r->filename($filename);
-			return Apache::DECLINED;
+			return Apache2::Const::DECLINED();
 		}
 
 		my $stripped_filename = $filename;
 		$stripped_filename =~ s!\.([^./]+)$!! and $ext = $1;
 
+		my ($dsd_filename, $application);
 		if (-f $stripped_filename . '.xml') {
 			# We found XML file -- we will use this static file
 			# instead of running the application
@@ -252,10 +270,11 @@ sub handler {
 				$r->content_type('text/plain');
 				$r->print("Failed to load data for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] filename [$filename] error " . $rayapp->errstr);
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			};
+			@stylesheets = $xml->find_stylesheets($ext);
 		} else {
-			my $dsd_filename;
 			if (defined $ext) {
 				$dsd_filename = $stripped_filename . '.dsd';
 			} else {
@@ -263,7 +282,7 @@ sub handler {
 			}
 			if (not -f $dsd_filename) {
 				$r->log_error("RayApp::mod_perl: uri [$uri] filename [$filename] no DSD [$dsd_filename]");
-				return Apache::NOT_FOUND;
+				return Apache2::Const::NOT_FOUND();
 			}
 
 			$xml = $rayapp->load_dsd($dsd_filename);
@@ -271,10 +290,11 @@ sub handler {
 				$r->content_type('text/plain');
 				$r->print("Failed to load output specification for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] error " . $rayapp->errstr);
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			}
 
-			my $application = $xml->application_name;
+			$application = $xml->application_name;
 			if (not defined $application) {
 				for ('.mpl', '.pl') {
 					if (-f $stripped_filename . $_) {
@@ -284,9 +304,13 @@ sub handler {
 				}
 				if (not defined $application) {
 					$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] no application found");
-					return Apache::NOT_FOUND;
+					return Apache2::Const::NOT_FOUND();
 				}
 			}
+		}
+		if (defined $application
+			or (@stylesheets
+				and $r->dir_config('RayAppStyleStaticParams'))) {
 
 			my $input_module = $r->dir_config('RayAppInputModule');
 			if (defined $input_module) {
@@ -298,7 +322,8 @@ sub handler {
 					$r->content_type('text/plain');
 					$r->print("Failed to load input module for [$uri]\n");
 					$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] input module [$input_module]\n$@");
-					return Apache::SERVER_ERROR;
+					$r->status(Apache2::Const::SERVER_ERROR());
+					return Apache2::Const::OK();
 				}
 
 				my $handler = "${input_module}::handler";
@@ -312,10 +337,13 @@ sub handler {
 					$r->content_type('text/plain');
 					$r->print("Failed to run input module for [$uri]\n");
 					$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] input module [$input_module]\n$@");
-					return Apache::SERVER_ERROR;
+					$r->status(Apache2::Const::SERVER_ERROR());
+					return Apache2::Const::OK();
 				}
 			}
-
+		}
+		
+		if (defined $application) {
 			my $tied = tied *STDOUT;
 			my @stdout_data;
 			my $err;
@@ -350,14 +378,16 @@ sub handler {
 				$r->content_type('text/plain');
 				$r->print("Failed to run application for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] application [$application]\n$err");
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			}
 
 			if (not defined $data) {
 				$r->content_type('text/plain');
 				$r->print("Failed to run application for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] application [$application] returned undef");
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			}
 
 			if (not ref $data) {
@@ -365,7 +395,8 @@ sub handler {
 					$r->content_type('text/plain');
 					$r->print("Failed to run application for [$uri]\n");
 					$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] application [$application] returned 500: " . $rayapp->errstr);
-					return Apache::SERVER_ERROR;
+					$r->status(Apache2::Const::SERVER_ERROR());
+					return Apache2::Const::OK();
 				}
 
 				# Handler already sent the response itself
@@ -377,7 +408,7 @@ sub handler {
 				$r->send_cgi_header(
 					join '', @stdout_data
 				);
-				return Apache::OK;
+				return Apache2::Const::OK();
 			}
 			$dom = $xml->serialize_data_dom($data,
 				{
@@ -389,12 +420,12 @@ sub handler {
 				$r->content_type('text/plain');
 				$r->print("Failed to serialize output data for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] DSD [$dsd_filename] " . $xml->errstr);
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			}
 		}
+		@stylesheets = $xml->find_stylesheets($ext);
 	}
-	my @stylesheets = $xml->find_stylesheets($ext);
-
 
 	if (defined $filename and @stylesheets) {
 		for (@stylesheets) {
@@ -422,7 +453,8 @@ sub handler {
 				$r->content_type('text/plain');
 				$r->print("Failed to load style param module for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] style param module [$style_param_module]\n$@");
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			}
 
 			my $handler = "${style_param_module}::handler";
@@ -436,7 +468,8 @@ sub handler {
 				$r->content_type('text/plain');
 				$r->print("Failed to run style param module for [$uri]\n");
 				$r->log_error("RayApp::mod_perl: uri [$uri] style param module [$style_param_module]\n$@");
-				return Apache::SERVER_ERROR;
+				$r->status(Apache2::Const::SERVER_ERROR());
+				return Apache2::Const::OK();
 			}
 		}
 	}
@@ -462,7 +495,8 @@ sub handler {
 			$r->content_type('text/plain');
 			$r->print("Failed to style output for [$uri]\n");
 			$r->log_error("RayApp::mod_perl: uri [$uri] filename [$filename] style error " . $xml->errstr);
-			return Apache::SERVER_ERROR;
+			$r->status(Apache2::Const::SERVER_ERROR());
+			return Apache2::Const::OK();
 		}
 	} else {
 		my $i = 1;
@@ -503,12 +537,13 @@ sub handler {
 			$r->content_type('text/plain');
 			$r->print("Failed to generate PDF for [$uri]\n");
 			$r->log_error("RayApp::mod_perl: uri [$uri] processor [$processor] should have both %IN and %OUT");
-			return Apache::SERVER_ERROR;
+			$r->status(Apache2::Const::SERVER_ERROR());
+			return Apache2::Const::OK();
 		}
 		print { $in } $output;
 		$in->close();
-		$r->log_rerror(&Apache::Log::LOG_MARK, Apache::LOG_INFO,
-			APR::SUCCESS, "Calling [$processor]");
+		$r->log_rerror(Apache2::Log::LOG_MARK(), Apache2::Const::LOG_INFO(),
+			APR::Const::SUCCESS(), "Calling [$processor]");
 		system($processor);
 		local $/ = undef;
 		$output = < $out >;
@@ -535,7 +570,7 @@ sub handler {
 		$r->status($xml->status);
 		$r->err_headers_out->{Location} = $redirect_location;
 	}
-	return Apache::OK;
+	return Apache2::Const::OK();
 }
 
 1;

@@ -1,8 +1,13 @@
 
 This is change file for RayApp.
 
-1.165 working
+2.001 Mon Oct 31 11:58:56 CET 2005
+	Upgraded to support mod_perl 2.
+
+1.166 Apr 23 2005
 	Added support for plain transformation of XML (to HTML).
+
+1.165 Feb 22 2005
 
 1.148 Sat Sep  4 19:45:32 CEST 2004
 	Further tests.

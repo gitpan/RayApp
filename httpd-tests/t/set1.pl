@@ -10,24 +10,24 @@ use Apache::TestConfig;
 use Apache::TestRequest qw(GET POST);
 
 if ($main::location =~ /mod_perl/) {
-	eval 'use Apache::Request;';
+	eval 'use Apache2::Request;';
 	if ($@) {
-		plan skip_all => 'No Apache::Request, skipping';
+		plan skip_all => 'No Apache2::Request, skipping';
 		exit;
 	}
 }
 
 if ($main::location =~ /storable/) {
-	eval 'use Apache::SubProcess;';
+	eval 'use Apache2::SubProcess;';
 	if ($@) {
-		plan skip_all => 'No Apache::SubProcess, skipping';
+		plan skip_all => 'No Apache2::SubProcess, skipping';
 		exit;
 	}
 }
 
-plan tests => 93;
+plan tests => 98;
 
-my $VERSION = '1.165';
+my $VERSION = '2.002';
 
 my $hostport = Apache::TestRequest::hostport;
 
@@ -316,11 +316,32 @@ is($body, <<EOF, "POST /$main::location/processq.xml should return POSTed values
 </application>
 EOF
 
+my ($request, $ua);
+
+ok(1, $uri = "http://$hostport/$main::location/processq.xml?value=888");
+$request = new HTTP::Request POST => $uri;
+$request->content_type('application/x-www-form-urlencoded');
+$request->content('id=32&value=jezek');
+$ua = new LWP::UserAgent;
+$res = $ua->request($request);
+ok($res, 'Did we get HTTP::Response?');
+is($res->code, 200, "Test the response code");
+is($res->header('Content-Type'), 'text/xml', 'The data should be text/xml');
+$body = $res->content;
+is($body, <<EOF, "POST /$main::location/processq.xml should return POSTed values");
+<?xml version="1.0"?>
+<application>
+	<out_id>32</out_id>
+	<out_value>jezek</out_value>
+</application>
+EOF
+
+
 ok(1, $uri = "http://$hostport/$main::location/processq.xml?value=88");
-my $request = new HTTP::Request POST => $uri;
+$request = new HTTP::Request POST => $uri;
 $request->content_type('text/plain');
 $request->content('This is freeform content where a = 1');
-my $ua = new LWP::UserAgent;
+$ua = new LWP::UserAgent;
 $res = $ua->request($request);
 ok($res, 'Did we get HTTP::Response?');
 is($res->code, 200, "Test the response code");

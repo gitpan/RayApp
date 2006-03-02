@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use 5.008001;
 
-$RayApp::VERSION = '1.165';
+$RayApp::VERSION = '2.002';
 
 # print STDERR "RayApp version [$RayApp::VERSION]\n";
 

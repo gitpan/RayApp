@@ -1,34 +1,55 @@
 
 package RayApp::Request::APR;
 use strict;
-use Apache::Filter ();
-use Apache::Request ();
-use Apache::RequestUtil ();
-use Apache::Const qw(OK);
-use Apache::Connection ();
+use warnings FATAL => 'all';
+use Apache2::Filter ();
+use Apache2::Request ();
+use Apache2::RequestRec ();
+use APR::Request ();
+use Apache2::RequestUtil ();
+use Apache2::Const -compile => qw(MODE_READBYTES);
+use Apache2::Connection ();
 use APR::SockAddr ();
+use APR::Const -compile => qw(SUCCESS BLOCK_READ);
+use APR::Brigade ();
+use APR::Bucket ();
+
+use constant IOBUFSIZE => 8192;
 
 use base 'RayApp::Request';
 
 sub new {
 	my ($class, $r) = @_;
-	$r->add_input_filter(\&_storage_filter);
+	my $request = Apache2::Request->new($r);
+	my $bb = APR::Brigade->new($r->pool, $r->connection->bucket_alloc);
+	my @body;
+	my $seen_eos = 0;
+	do {
+		$r->input_filters->get_brigade($bb,
+			Apache2::Const::MODE_READBYTES,
+			APR::Const::BLOCK_READ, IOBUFSIZE);
+  
+		for (my $b = $bb->first; $b; $b = $bb->next($b)) {
+			if ($b->is_eos) {
+				$seen_eos++;
+				last;
+			}
+  
+			if ($b->read(my $buf)) {
+				push @body, $buf;
+			}
+
+			$b->remove; # optimization to reuse memory
+		}
+	} while (!$seen_eos);
+  
+	$bb->destroy;
+
 	return bless {
 		r => $r,
-		request => Apache::Request->new($r),
+		request => $request,
+		body => \@body,
 	}, $class;
-}
-
-sub _storage_filter {
-	my $filter = shift;
-	my $store;
-	while ($filter->read(my $buffer, 1024)) {
-		$filter->print($buffer);
-		$store .= $buffer;
-	}
-	my $orig = $filter->r->pnotes('rayapp_raw_body');
-	$filter->r->pnotes('rayapp_raw_body', $orig . $store);
-	return Apache::OK;
 }
 
 sub user {
@@ -43,22 +64,14 @@ sub _init_param {
 		$self->{'param'} = {};
 		if ($self->{'r'}->method eq 'POST') {
 			for ($self->{'request'}->param) {
-				# a hack for bug in Apache::Request which was giving
-				# us each value twice
-				my %u;
 				$self->{'param'}{$_} = [
-					grep { not $u{$_}++ }
 					$self->{'request'}->body($_)
 				];
 			}
 		} else {
-			for ($self->{'request'}->args) {
-				# a hack for bug in Apache::Request which was giving
-				# us each value twice
-				my %u;
+			for (APR::Request::args($self->{'request'})) {
 				$self->{'param'}{$_} = [
-					grep { not $u{$_}++ }
-					$self->{'request'}->args($_)
+					APR::Request::args($self->{'request'}, $_)
 				];
 			}
 		}
@@ -123,7 +136,7 @@ sub url {
 	my $out = $self->parse_full_uri($uri, %opts);
 	if ($opts{'query'} or $opts{'-query'}) {
 		my $query = $self->{r}->args;
-		if ($query ne '') {
+		if (defined $query and $query ne '') {
 			$out .= "?$query";
 		}
 	}
@@ -196,7 +209,12 @@ sub remote_addr {
 	return;
 }
 sub body {
-	shift->{r}->pnotes('rayapp_raw_body');
+	my $self = shift;
+	my $body = $self->{body};
+	if (defined $body and @$body) {
+		return join '', @$body;
+	}
+	return;
 }
 
 sub upload {

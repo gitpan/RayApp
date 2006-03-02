@@ -29,6 +29,9 @@ sub new {
 	if (defined $data->redirect_location) {
 		return $data;
 	}
+	if (defined $data->www_authenticate) {
+		return $data;
+	}
 
 	my $xml_parser = $rayapp->xml_parser or return;
 	eval {
@@ -85,7 +88,12 @@ sub new {
 	my %opts = @_;
 	my $new_uri = URI->new_abs($opts{uri}, $opts{stylesheet}->uri);
 	# print STDERR "Stylesheet [@{[ $opts{stylesheet}->uri ]}] wants [$new_uri] in pid $$\n";
-        my $source = $opts{stylesheet}->rayapp->load_uri($new_uri);
+	my $rayapp = $opts{stylesheet}->rayapp;
+	my $source = $rayapp->load_uri($new_uri);
+	if (not defined $source) {
+		my $errstr = $rayapp->errstr;
+		die "Failed to load [$new_uri]: $errstr\n";
+	}
 	return bless {
 		source => $source,
 		offset => 0,
@@ -187,7 +195,13 @@ sub style_dom {
 				return;
 			}
 		}
-		$outdom = eval { $style->transform($outdom, @style_params) };
+		{
+			local $XML::LibXML::match_cb = \&match_uri;
+			local $XML::LibXML::open_cb = sub { open_uri($stylesheet, @_) };
+			local $XML::LibXML::read_cb = \&read_uri;
+			local $XML::LibXML::close_cb = \&close_uri;
+			$outdom = eval { $style->transform($outdom, @style_params) };
+		}
 		if ($@) {
 			$self->errstr("Stylesheet [$st_uri] $@");
 			return;
@@ -271,8 +285,10 @@ sub find_stylesheets {
 	return if not defined $type or $type eq 'xml';
 	my @exts;
 
-	my @pi = grep { defined $_->{attributes}{href} }
-				@{ $self->{pi_xml_stylesheets} };
+	my @pi = grep { defined $_->{attributes}{href}
+		and (not defined $_->{attributes}{type}
+			or $_->{attributes}{type} =~ m!^text/(xml|application|xslt?)(\s*;|$)!) }
+		@{ $self->{pi_xml_stylesheets} };
 
 	if ($type eq 'html') {
 		my @match = (grep {

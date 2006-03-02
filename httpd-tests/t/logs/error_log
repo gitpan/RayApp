@@ -1,178 +1,149 @@
-[Wed Feb 09 10:52:34 2005] [info] Init: Initializing OpenSSL library
-[Wed Feb 09 10:52:34 2005] [info] Init: Seeding PRNG with 0 bytes of entropy
-[Wed Feb 09 10:52:34 2005] [info] Init: Generating temporary RSA private keys (512/1024 bits)
-[Wed Feb 09 10:52:34 2005] [info] Init: Generating temporary DH parameters (512/1024 bits)
-[Wed Feb 09 10:52:34 2005] [warn] Init: Session Cache is not configured [hint: SSLSessionCache]
-[Wed Feb 09 10:52:34 2005] [info] Init: Initializing (virtual) servers for SSL
-[Wed Feb 09 10:52:34 2005] [info] Server: Apache/2.0.52, Interface: mod_ssl/2.0.52, Library: OpenSSL/0.9.7a
-[Wed Feb 09 10:52:34 2005] [info] Init: Initializing OpenSSL library
-[Wed Feb 09 10:52:34 2005] [info] Init: Seeding PRNG with 0 bytes of entropy
-[Wed Feb 09 10:52:34 2005] [info] Init: Generating temporary RSA private keys (512/1024 bits)
-[Wed Feb 09 10:52:35 2005] [info] Init: Generating temporary DH parameters (512/1024 bits)
-[Wed Feb 09 10:52:35 2005] [info] Init: Initializing (virtual) servers for SSL
-[Wed Feb 09 10:52:35 2005] [info] Server: Apache/2.0.52, Interface: mod_ssl/2.0.52, Library: OpenSSL/0.9.7a
-[Wed Feb 09 10:52:35 2005] [notice] Apache/2.0.52 (Fedora) mod_perl/1.99_17 Perl/v5.8.5 mod_ssl/2.0.52 OpenSSL/0.9.7a configured -- resuming normal operations
-[Wed Feb 09 10:52:35 2005] [info] Server built: Nov 11 2004 10:31:42
-[Wed Feb 09 10:52:35 2005] [debug] prefork.c(955): AcceptMutex: sysvsem (default: sysvsem)
-[Wed Feb 09 10:52:36 2005] [error] [client 127.0.0.1] File does not exist: /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/nonexistent
-[Wed Feb 09 10:52:39 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.xml]
-[Wed Feb 09 10:52:40 2005] [error] [client 127.0.0.1] RayApp::CGI: filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD found
-[Wed Feb 09 10:52:44 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.xml]
-[Wed Feb 09 10:52:45 2005] [error] [client 127.0.0.1] RayApp::CGI: filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD found
-[Wed Feb 09 10:52:47 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.xml] for [/mod_perl2/xml.xml] in pid 32387
-[Wed Feb 09 10:52:47 2005] [error] RayApp::mod_perl: uri [/mod_perl2/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/nonexistent.dsd]
-[Wed Feb 09 10:52:47 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-[Wed Feb 09 10:52:47 2005] [debug] apreq_parsers.c(272): [client 127.0.0.1] url parser saw EOS
-[Wed Feb 09 10:52:47 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/changing.mpl line 3.
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/changing.mpl line 3.
-[Wed Feb 09 10:52:52 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/xml.xml] for [/mod_perl4/xml.xml] in pid 32387
-[Wed Feb 09 10:52:52 2005] [error] RayApp::mod_perl: uri [/mod_perl4/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/nonexistent.dsd]
-[Wed Feb 09 10:52:52 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-[Wed Feb 09 10:52:52 2005] [debug] apreq_parsers.c(272): [client 127.0.0.1] url parser saw EOS
-[Wed Feb 09 10:52:52 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
-[Wed Feb 09 10:52:57 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.xml] for [/mod_perl1/xml.xml] in pid 32366
-[Wed Feb 09 10:52:57 2005] [error] RayApp::mod_perl: uri [/mod_perl1/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/nonexistent.dsd]
-[Wed Feb 09 10:52:57 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-[Wed Feb 09 10:52:57 2005] [debug] apreq_parsers.c(272): [client 127.0.0.1] url parser saw EOS
-[Wed Feb 09 10:52:57 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/changing.mpl line 3.
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/changing.mpl line 3.
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/changing.mpl line 3.
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/changing.mpl line 3.
-[Wed Feb 09 10:53:02 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/xml.xml] for [/mod_perl3/xml.xml] in pid 32387
-[Wed Feb 09 10:53:02 2005] [error] RayApp::mod_perl: uri [/mod_perl3/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/nonexistent.dsd]
-[Wed Feb 09 10:53:02 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-[Wed Feb 09 10:53:02 2005] [debug] apreq_parsers.c(272): [client 127.0.0.1] url parser saw EOS
-[Wed Feb 09 10:53:02 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
-[Wed Feb 09 10:53:06 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app1.xml] to [http://localhost.localdomain:8529/mod_perl4/app1.xml] in pid 32366
-[Wed Feb 09 10:53:06 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app1.html] to [http://localhost.localdomain:8529/mod_perl4/app1.xml] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app3.html] to [http://localhost.localdomain:8529/mod_perl4/app3.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/app3.xsl] for [/mod_perl4/app3.xsl] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app3.html] to [http://localhost.localdomain:8529/mod_perl4/app3.xml?m=35;n=auto&id=17] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/app3.xsl] for [/mod_perl4/app3.xsl] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/] to [http://localhost.localdomain:8529/mod_perl4/app3.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/app3.xsl] for [/mod_perl4/app3.xsl] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/] to [http://localhost.localdomain:8529/mod_perl4/app3.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/app3.xsl] for [/mod_perl4/app3.xsl] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app2.html] to [http://localhost.localdomain:8529/mod_perl4/app2.xml] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/app2.xsl] for [/mod_perl4/app2.xsl] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/text.xml] to [http://localhost.localdomain:8529/mod_perl4/text.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/302.xml] to [http://localhost.localdomain:8529/mod_perl4/302.xml] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/xml.xml] to [http://localhost.localdomain:8529/mod_perl4/xml.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/xml.xml] for [/mod_perl4/xml.xml] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/xml.html] to [http://localhost.localdomain:8529/mod_perl4/xml.xml] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/xml.xml] for [/mod_perl4/xml.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/xml.xsl] for [/mod_perl4/xml.xsl] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/xml.txt] to [http://localhost.localdomain:8529/mod_perl4/xml.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/xml.xml] for [/mod_perl4/xml.xml] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/xml.txt.xsl] for [/mod_perl4/xml.txt.xsl] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/nonexistent.xml] to [http://localhost.localdomain:8529/mod_perl4/nonexistent.xml] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl: uri [/mod_perl4/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/nonexistent.dsd]
-[Wed Feb 09 10:53:07 2005] [error] Returning data backend's 404
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml?id=123] in pid 32387
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml?value=123;id=jezek] in pid 32366
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml] in pid 32387
-[Wed Feb 09 10:53:07 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-[Wed Feb 09 10:53:07 2005] [debug] apreq_parsers.c(272): [client 127.0.0.1] url parser saw EOS
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml] in pid 32366
-[Wed Feb 09 10:53:07 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-[Wed Feb 09 10:53:07 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.xml] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 32387
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
-[Wed Feb 09 10:53:08 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.xml] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 32366
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
-[Wed Feb 09 10:53:09 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.xml] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 32387
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
-[Wed Feb 09 10:53:09 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.html] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 32366
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
-[Wed Feb 09 10:53:09 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.xsl] for [/mod_perl4/changing.xsl] in pid 32387
-[Wed Feb 09 10:53:10 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.html] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 32387
-[Wed Feb 09 10:53:10 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.xsl] for [/mod_perl4/changing.xsl] in pid 32366
-[Wed Feb 09 10:53:11 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.html] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 32366
-[Wed Feb 09 10:53:11 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray2/changing.xsl] for [/mod_perl4/changing.xsl] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app1.xml] to [http://localhost.localdomain:8529/mod_perl3/app1.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app1.html] to [http://localhost.localdomain:8529/mod_perl3/app1.xml] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/appx.html.xsl] for [/mod_perl3/appx.html.xsl] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/datax.xsl] for [/mod_perl3/datax.xsl] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app3.html] to [http://localhost.localdomain:8529/mod_perl3/app3.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/app3.xsl] for [/mod_perl3/app3.xsl] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app3.html] to [http://localhost.localdomain:8529/mod_perl3/app3.xml?m=35;n=auto&id=17] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/app3.xsl] for [/mod_perl3/app3.xsl] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/] to [http://localhost.localdomain:8529/mod_perl3/app3.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/app3.xsl] for [/mod_perl3/app3.xsl] in pid 32366
-[Wed Feb 09 10:53:12 2005] [debug] mod_rewrite.c(1778): [client 127.0.0.1] mod_rewrite's internal redirect status: 0/10.
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/] to [http://localhost.localdomain:8529/mod_perl3/app3.xml] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/app3.xsl] for [/mod_perl3/app3.xsl] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app2.html] to [http://localhost.localdomain:8529/mod_perl3/app2.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/app2.xsl] for [/mod_perl3/app2.xsl] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/text.xml] to [http://localhost.localdomain:8529/mod_perl3/text.xml] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/302.xml] to [http://localhost.localdomain:8529/mod_perl3/302.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/xml.xml] to [http://localhost.localdomain:8529/mod_perl3/xml.xml] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/xml.xml] for [/mod_perl3/xml.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/xml.html] to [http://localhost.localdomain:8529/mod_perl3/xml.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/xml.xml] for [/mod_perl3/xml.xml] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/xml.xsl] for [/mod_perl3/xml.xsl] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/xml.txt] to [http://localhost.localdomain:8529/mod_perl3/xml.xml] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/xml.xml] for [/mod_perl3/xml.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/xml.txt.xsl] for [/mod_perl3/xml.txt.xsl] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/nonexistent.xml] to [http://localhost.localdomain:8529/mod_perl3/nonexistent.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl: uri [/mod_perl3/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/nonexistent.dsd]
-[Wed Feb 09 10:53:12 2005] [error] Returning data backend's 404
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml?id=123] in pid 32387
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml?value=123;id=jezek] in pid 32366
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml] in pid 32387
-[Wed Feb 09 10:53:12 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-[Wed Feb 09 10:53:12 2005] [debug] apreq_parsers.c(272): [client 127.0.0.1] url parser saw EOS
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml] in pid 32366
-[Wed Feb 09 10:53:12 2005] [debug] mod_apreq.c(427): [client 127.0.0.1] prefetching 65536 bytes
-[Wed Feb 09 10:53:12 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.xml] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 32387
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
-[Wed Feb 09 10:53:13 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.xml] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 32366
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
-[Wed Feb 09 10:53:14 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.xml] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 32387
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
-[Wed Feb 09 10:53:14 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.html] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 32366
-Subroutine handler redefined at /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
-[Wed Feb 09 10:53:14 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.xsl] for [/mod_perl3/changing.xsl] in pid 32387
-[Wed Feb 09 10:53:15 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.html] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 32387
-[Wed Feb 09 10:53:15 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.xsl] for [/mod_perl3/changing.xsl] in pid 32366
-[Wed Feb 09 10:53:16 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.html] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 32366
-[Wed Feb 09 10:53:16 2005] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray1/changing.xsl] for [/mod_perl3/changing.xsl] in pid 32387
-[Wed Feb 09 10:53:17 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app1.xml] to [http://localhost.localdomain:8529/cgi1/app1.xml] in pid 32387
-[Wed Feb 09 10:53:17 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app1.html] to [http://localhost.localdomain:8529/cgi1/app1.xml] in pid 32490
-[Wed Feb 09 10:53:17 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app3.html] to [http://localhost.localdomain:8529/cgi1/app3.xml] in pid 32387
-[Wed Feb 09 10:53:18 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/app3.xsl]
-[Wed Feb 09 10:53:18 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app3.html] to [http://localhost.localdomain:8529/cgi1/app3.xml?m=35;n=auto&id=17] in pid 32366
-[Wed Feb 09 10:53:18 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/app3.xsl]
-[Wed Feb 09 10:53:18 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/] to [http://localhost.localdomain:8529/cgi1/app3.xml] in pid 32490
-[Wed Feb 09 10:53:18 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/app3.xsl]
-[Wed Feb 09 10:53:18 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/] to [http://localhost.localdomain:8529/cgi1/app3.xml] in pid 32366
-[Wed Feb 09 10:53:19 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/app3.xsl]
-[Wed Feb 09 10:53:19 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app2.html] to [http://localhost.localdomain:8529/cgi1/app2.xml] in pid 32490
-[Wed Feb 09 10:53:19 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/app2.xsl]
-[Wed Feb 09 10:53:19 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/text.xml] to [http://localhost.localdomain:8529/cgi1/text.xml] in pid 32387
-[Wed Feb 09 10:53:19 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/302.xml] to [http://localhost.localdomain:8529/cgi1/302.xml] in pid 32490
-[Wed Feb 09 10:53:20 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/xml.xml] to [http://localhost.localdomain:8529/cgi1/xml.xml] in pid 32387
-[Wed Feb 09 10:53:20 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.xml]
-[Wed Feb 09 10:53:20 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/xml.html] to [http://localhost.localdomain:8529/cgi1/xml.xml] in pid 32490
-[Wed Feb 09 10:53:20 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.xml]
-[Wed Feb 09 10:53:20 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.xsl]
-[Wed Feb 09 10:53:20 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/xml.txt] to [http://localhost.localdomain:8529/cgi1/xml.xml] in pid 32366
-[Wed Feb 09 10:53:20 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.xml]
-[Wed Feb 09 10:53:20 2005] [error] [client 127.0.0.1] RayApp::CGI: serving local file [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/xml.txt.xsl]
-[Wed Feb 09 10:53:20 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/nonexistent.xml] to [http://localhost.localdomain:8529/cgi1/nonexistent.xml] in pid 32387
-[Wed Feb 09 10:53:21 2005] [error] [client 127.0.0.1] RayApp::CGI: filename [/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD found
-[Wed Feb 09 10:53:21 2005] [error] Returning data backend's 404
-[Wed Feb 09 10:53:21 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml] in pid 32490
-[Wed Feb 09 10:53:21 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml?id=123] in pid 32387
-[Wed Feb 09 10:53:21 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml?value=123;id=jezek] in pid 32490
-[Wed Feb 09 10:53:21 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml] in pid 32387
-[Wed Feb 09 10:53:22 2005] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml] in pid 32490
-[Wed Feb 09 10:53:22 2005] [info] removed PID file /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/logs/httpd.pid (pid=32365)
-[Wed Feb 09 10:53:22 2005] [notice] caught SIGTERM, shutting down
+[Mon Feb 27 14:18:26 2006] [info] Init: Initializing OpenSSL library
+[Mon Feb 27 14:18:26 2006] [info] Init: Seeding PRNG with 0 bytes of entropy
+[Mon Feb 27 14:18:26 2006] [info] Init: Generating temporary RSA private keys (512/1024 bits)
+[Mon Feb 27 14:18:26 2006] [info] Init: Generating temporary DH parameters (512/1024 bits)
+[Mon Feb 27 14:18:26 2006] [warn] Init: Session Cache is not configured [hint: SSLSessionCache]
+[Mon Feb 27 14:18:26 2006] [info] Init: Initializing (virtual) servers for SSL
+[Mon Feb 27 14:18:26 2006] [info] Server: Apache/2.0.54, Interface: mod_ssl/2.0.54, Library: OpenSSL/0.9.7f
+[Mon Feb 27 14:18:26 2006] [info] Init: Initializing OpenSSL library
+[Mon Feb 27 14:18:26 2006] [info] Init: Seeding PRNG with 0 bytes of entropy
+[Mon Feb 27 14:18:26 2006] [info] Init: Generating temporary RSA private keys (512/1024 bits)
+[Mon Feb 27 14:18:26 2006] [info] Init: Generating temporary DH parameters (512/1024 bits)
+[Mon Feb 27 14:18:26 2006] [info] Init: Initializing (virtual) servers for SSL
+[Mon Feb 27 14:18:26 2006] [info] Server: Apache/2.0.54, Interface: mod_ssl/2.0.54, Library: OpenSSL/0.9.7f
+[Mon Feb 27 14:18:26 2006] [notice] Apache/2.0.54 (Fedora) mod_ssl/2.0.54 OpenSSL/0.9.7f mod_apreq2-20051231/2.5.7 mod_perl/2.0.1 Perl/v5.8.6 configured -- resuming normal operations
+[Mon Feb 27 14:18:26 2006] [info] Server built: Jan 17 2006 06:36:00
+[Mon Feb 27 14:18:26 2006] [debug] prefork.c(956): AcceptMutex: sysvsem (default: sysvsem)
+[Mon Feb 27 14:18:28 2006] [error] [client 127.0.0.1] File does not exist: /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/nonexistent
+[Mon Feb 27 14:18:32 2006] [error] [client 127.0.0.1] RayApp::CGI: filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD found
+[Mon Feb 27 14:18:37 2006] [error] [client 127.0.0.1] RayApp::CGI: filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD found
+[Mon Feb 27 14:18:40 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/xml.xml] for [/mod_perl2/xml.xml] in pid 17944
+[Mon Feb 27 14:18:40 2006] [error] RayApp::mod_perl: uri [/mod_perl2/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/nonexistent.dsd]
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/changing.mpl line 3.
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/changing.mpl line 3.
+[Mon Feb 27 14:18:45 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/xml.xml] for [/mod_perl4/xml.xml] in pid 17944
+[Mon Feb 27 14:18:45 2006] [error] RayApp::mod_perl: uri [/mod_perl4/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/nonexistent.dsd]
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
+[Mon Feb 27 14:18:50 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/xml.xml] for [/mod_perl1/xml.xml] in pid 17944
+[Mon Feb 27 14:18:50 2006] [error] RayApp::mod_perl: uri [/mod_perl1/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/nonexistent.dsd]
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/changing.mpl line 3.
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/changing.mpl line 3.
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/changing.mpl line 3.
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/changing.mpl line 3.
+[Mon Feb 27 14:18:55 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/xml.xml] for [/mod_perl3/xml.xml] in pid 17944
+[Mon Feb 27 14:18:55 2006] [error] RayApp::mod_perl: uri [/mod_perl3/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/nonexistent.dsd]
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
+[Mon Feb 27 14:19:00 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app1.xml] to [http://localhost.localdomain:8529/mod_perl4/app1.xml] in pid 17944
+[Mon Feb 27 14:19:00 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app1.html] to [http://localhost.localdomain:8529/mod_perl4/app1.xml] in pid 17961
+[Mon Feb 27 14:19:00 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app3.html] to [http://localhost.localdomain:8529/mod_perl4/app3.xml] in pid 17944
+[Mon Feb 27 14:19:00 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/app3.xsl] for [/mod_perl4/app3.xsl] in pid 17961
+[Mon Feb 27 14:19:00 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app3.html] to [http://localhost.localdomain:8529/mod_perl4/app3.xml?m=35;n=auto&id=17] in pid 17961
+[Mon Feb 27 14:19:00 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/app3.xsl] for [/mod_perl4/app3.xsl] in pid 17944
+[Mon Feb 27 14:19:00 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/] to [http://localhost.localdomain:8529/mod_perl4/app3.xml] in pid 17944
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/app3.xsl] for [/mod_perl4/app3.xsl] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/] to [http://localhost.localdomain:8529/mod_perl4/app3.xml] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/app3.xsl] for [/mod_perl4/app3.xsl] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/app2.html] to [http://localhost.localdomain:8529/mod_perl4/app2.xml] in pid 17944
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/app2.xsl] for [/mod_perl4/app2.xsl] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/text.xml] to [http://localhost.localdomain:8529/mod_perl4/text.xml] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/302.xml] to [http://localhost.localdomain:8529/mod_perl4/302.xml] in pid 17944
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/xml.xml] to [http://localhost.localdomain:8529/mod_perl4/xml.xml] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/xml.xml] for [/mod_perl4/xml.xml] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/xml.html] to [http://localhost.localdomain:8529/mod_perl4/xml.xml] in pid 17944
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/xml.xml] for [/mod_perl4/xml.xml] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/xml.xsl] for [/mod_perl4/xml.xsl] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/xml.txt] to [http://localhost.localdomain:8529/mod_perl4/xml.xml] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/xml.xml] for [/mod_perl4/xml.xml] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/xml.txt.xsl] for [/mod_perl4/xml.txt.xsl] in pid 17944
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/nonexistent.xml] to [http://localhost.localdomain:8529/mod_perl4/nonexistent.xml] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl: uri [/mod_perl4/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/nonexistent.dsd]
+[Mon Feb 27 14:19:01 2006] [error] Returning data backend's 404
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml?id=123] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml?value=123;id=jezek] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml] in pid 18099
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/processq.xml] to [http://localhost.localdomain:8529/mod_perl4/processq.xml] in pid 17961
+[Mon Feb 27 14:19:01 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.xml] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 18099
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
+[Mon Feb 27 14:19:02 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.xml] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 17944
+[Mon Feb 27 14:19:03 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.xml] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 18099
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
+[Mon Feb 27 14:19:03 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.html] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 17944
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/changing.mpl line 3.
+[Mon Feb 27 14:19:03 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/changing.xsl] for [/mod_perl4/changing.xsl] in pid 18099
+[Mon Feb 27 14:19:04 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.html] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 18099
+[Mon Feb 27 14:19:04 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/changing.xsl] for [/mod_perl4/changing.xsl] in pid 17944
+[Mon Feb 27 14:19:05 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy1/changing.html] to [http://localhost.localdomain:8529/mod_perl4/changing.xml] in pid 17944
+[Mon Feb 27 14:19:05 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray2/changing.xsl] for [/mod_perl4/changing.xsl] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app1.xml] to [http://localhost.localdomain:8529/mod_perl3/app1.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app1.html] to [http://localhost.localdomain:8529/mod_perl3/app1.xml] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/appx.html.xsl] for [/mod_perl3/appx.html.xsl] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/datax.xsl] for [/mod_perl3/datax.xsl] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app3.html] to [http://localhost.localdomain:8529/mod_perl3/app3.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/app3.xsl] for [/mod_perl3/app3.xsl] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app3.html] to [http://localhost.localdomain:8529/mod_perl3/app3.xml?m=35;n=auto&id=17] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/app3.xsl] for [/mod_perl3/app3.xsl] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/] to [http://localhost.localdomain:8529/mod_perl3/app3.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/app3.xsl] for [/mod_perl3/app3.xsl] in pid 17944
+[Mon Feb 27 14:19:06 2006] [debug] mod_rewrite.c(1788): [client 127.0.0.1] mod_rewrite's internal redirect status: 0/10.
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/] to [http://localhost.localdomain:8529/mod_perl3/app3.xml] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/app3.xsl] for [/mod_perl3/app3.xsl] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/app2.html] to [http://localhost.localdomain:8529/mod_perl3/app2.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/app2.xsl] for [/mod_perl3/app2.xsl] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/text.xml] to [http://localhost.localdomain:8529/mod_perl3/text.xml] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/302.xml] to [http://localhost.localdomain:8529/mod_perl3/302.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/xml.xml] to [http://localhost.localdomain:8529/mod_perl3/xml.xml] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/xml.xml] for [/mod_perl3/xml.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/xml.html] to [http://localhost.localdomain:8529/mod_perl3/xml.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/xml.xml] for [/mod_perl3/xml.xml] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/xml.xsl] for [/mod_perl3/xml.xsl] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/xml.txt] to [http://localhost.localdomain:8529/mod_perl3/xml.xml] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/xml.xml] for [/mod_perl3/xml.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/xml.txt.xsl] for [/mod_perl3/xml.txt.xsl] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/nonexistent.xml] to [http://localhost.localdomain:8529/mod_perl3/nonexistent.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl: uri [/mod_perl3/nonexistent.xml] filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/nonexistent.xml] no DSD [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/nonexistent.dsd]
+[Mon Feb 27 14:19:06 2006] [error] Returning data backend's 404
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml?id=123] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml?value=123;id=jezek] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml] in pid 17944
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/processq.xml] to [http://localhost.localdomain:8529/mod_perl3/processq.xml] in pid 18099
+[Mon Feb 27 14:19:06 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.xml] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 17944
+[Mon Feb 27 14:19:07 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.xml] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 18099
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
+[Mon Feb 27 14:19:08 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.xml] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 17944
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
+[Mon Feb 27 14:19:08 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.html] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 18099
+Subroutine handler redefined at /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/changing.mpl line 3.
+[Mon Feb 27 14:19:08 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/changing.xsl] for [/mod_perl3/changing.xsl] in pid 17944
+[Mon Feb 27 14:19:09 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.html] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 17944
+[Mon Feb 27 14:19:09 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/changing.xsl] for [/mod_perl3/changing.xsl] in pid 18099
+[Mon Feb 27 14:19:10 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy2/changing.html] to [http://localhost.localdomain:8529/mod_perl3/changing.xml] in pid 18099
+[Mon Feb 27 14:19:10 2006] [error] RayApp::mod_perl: info: serving local file [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray1/changing.xsl] for [/mod_perl3/changing.xsl] in pid 17944
+[Mon Feb 27 14:19:11 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app1.xml] to [http://localhost.localdomain:8529/cgi1/app1.xml] in pid 17944
+[Mon Feb 27 14:19:11 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app1.html] to [http://localhost.localdomain:8529/cgi1/app1.xml] in pid 18099
+[Mon Feb 27 14:19:12 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app3.html] to [http://localhost.localdomain:8529/cgi1/app3.xml] in pid 18114
+[Mon Feb 27 14:19:12 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app3.html] to [http://localhost.localdomain:8529/cgi1/app3.xml?m=35;n=auto&id=17] in pid 17944
+[Mon Feb 27 14:19:13 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/] to [http://localhost.localdomain:8529/cgi1/app3.xml] in pid 18099
+[Mon Feb 27 14:19:13 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/] to [http://localhost.localdomain:8529/cgi1/app3.xml] in pid 17944
+[Mon Feb 27 14:19:13 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/app2.html] to [http://localhost.localdomain:8529/cgi1/app2.xml] in pid 18099
+[Mon Feb 27 14:19:14 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/text.xml] to [http://localhost.localdomain:8529/cgi1/text.xml] in pid 18114
+[Mon Feb 27 14:19:14 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/302.xml] to [http://localhost.localdomain:8529/cgi1/302.xml] in pid 18099
+[Mon Feb 27 14:19:14 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/xml.xml] to [http://localhost.localdomain:8529/cgi1/xml.xml] in pid 18114
+[Mon Feb 27 14:19:14 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/xml.html] to [http://localhost.localdomain:8529/cgi1/xml.xml] in pid 18099
+[Mon Feb 27 14:19:15 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/xml.txt] to [http://localhost.localdomain:8529/cgi1/xml.xml] in pid 17944
+[Mon Feb 27 14:19:15 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/nonexistent.xml] to [http://localhost.localdomain:8529/cgi1/nonexistent.xml] in pid 18114
+[Mon Feb 27 14:19:15 2006] [error] [client 127.0.0.1] RayApp::CGI: filename [/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs/ray/nonexistent.xml] no DSD found
+[Mon Feb 27 14:19:15 2006] [error] Returning data backend's 404
+[Mon Feb 27 14:19:15 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml] in pid 17944
+[Mon Feb 27 14:19:15 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml?id=123] in pid 18114
+[Mon Feb 27 14:19:15 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml?value=123;id=jezek] in pid 17944
+[Mon Feb 27 14:19:16 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml] in pid 18114
+[Mon Feb 27 14:19:16 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml] in pid 17944
+[Mon Feb 27 14:19:16 2006] [error] RayApp::mod_perl proxy [/mod_perl_proxy3_cgi/processq.xml] to [http://localhost.localdomain:8529/cgi1/processq.xml] in pid 18114
+[Mon Feb 27 14:19:17 2006] [info] removed PID file /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/logs/httpd.pid (pid=17943)
+[Mon Feb 27 14:19:17 2006] [notice] caught SIGTERM, shutting down

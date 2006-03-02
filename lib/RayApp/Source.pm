@@ -4,7 +4,7 @@ package RayApp::Source;
 use strict;
 use warnings;
 
-$RayApp::Source::VERSION = '1.160';
+$RayApp::Source::VERSION = '2.001';
 		
 use Digest::MD5 ();
 use HTTP::Request ();
@@ -26,18 +26,22 @@ sub new {
 	if (defined $opts{frontend_uri}) {
 		$request->header('X-RayApp-Frontend-URI', $opts{frontend_uri});
 	}
+	if (defined $opts{authorization_header}) {
+		$request->header('Authorization', $opts{authorization_header});
+	}
 	my $response = $rayapp->ua->request( $request );
 
 	if ($response->is_error) {
-		if ($opts{want_404}	# catch 404 Not exists
-			and $response->code eq '404') {
+		my $code = $response->code;
+		if ($opts{"want_$code"}) {	# catch 401, 404, ...
 			return bless {
 				uri => $opts{uri},
 				content => undef,
 				content_type => undef,
 				md5_hex => undef,
 				rayapp => $rayapp,
-				code => $response->code,
+				code => $code,
+				www_authenticate => scalar($response->header('WWW-Authenticate')),
 			}, $class;
 		}
 		if (defined $response->{_msg}) {
@@ -104,6 +108,9 @@ sub code {
 *status = \&code;
 sub redirect_location {
 	shift->{redirect_location};
+}
+sub www_authenticate {
+	shift->{www_authenticate};
 }
 sub stylesheet_params {
 	my $self = shift;

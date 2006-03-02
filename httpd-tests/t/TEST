@@ -3,12 +3,12 @@
 # 01: /usr/lib/perl5/site_perl/5.8.5/i386-linux-thread-multi/Apache/TestConfig.pm:898
 # 02: /usr/lib/perl5/site_perl/5.8.5/i386-linux-thread-multi/Apache/TestConfig.pm:988
 # 03: /usr/lib/perl5/site_perl/5.8.5/i386-linux-thread-multi/Apache/TestMM.pm:137
-# 04: (eval 40):5
+# 04: (eval 41):5
 # 05: ./Makefile.PL:49
-# 06: /usr/lib/perl5/5.8.5/ExtUtils/MakeMaker.pm:181
-# 07: /usr/lib/perl5/5.8.5/ExtUtils/MakeMaker.pm:170
-# 08: /usr/lib/perl5/5.8.5/ExtUtils/MakeMaker.pm:589
-# 09: /usr/lib/perl5/5.8.5/ExtUtils/MakeMaker.pm:53
+# 06: /usr/lib/perl5/5.8.6/ExtUtils/MakeMaker.pm:181
+# 07: /usr/lib/perl5/5.8.6/ExtUtils/MakeMaker.pm:170
+# 08: /usr/lib/perl5/5.8.6/ExtUtils/MakeMaker.pm:609
+# 09: /usr/lib/perl5/5.8.6/ExtUtils/MakeMaker.pm:53
 # 10: Makefile.PL:7
 
 BEGIN { eval { require blib && blib->import; } }

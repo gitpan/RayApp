@@ -23,8 +23,8 @@ my $buildconfig;
 my ($apxs, $modules_lib, $mod_perl_lib);
 
 eval <<'EOF';
-	use Apache::BuildConfig;
-	$buildconfig = new Apache::BuildConfig;
+	use Apache2::BuildConfig;
+	$buildconfig = new Apache2::BuildConfig;
 EOF
 
 if (defined $buildconfig) {

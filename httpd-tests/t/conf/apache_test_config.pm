@@ -5,7 +5,7 @@
 # 04: /usr/lib/perl5/site_perl/5.8.5/i386-linux-thread-multi/Apache/TestRun.pm:502
 # 05: /usr/lib/perl5/site_perl/5.8.5/i386-linux-thread-multi/Apache/TestRun.pm:720
 # 06: /usr/lib/perl5/site_perl/5.8.5/i386-linux-thread-multi/Apache/TestRun.pm:720
-# 07: /usr/local/home/adelton/RayApp-1.164/httpd-tests/t/TEST:35
+# 07: /usr/local/home/adelton/RayApp-2.001/httpd-tests/t/TEST:35
 
 package apache_test_config;
 
@@ -15,7 +15,7 @@ sub new {
                  'hostport' => 'localhost.localdomain:8529',
                  'postamble' => [
                                   'TypesConfig "/etc/mime.types"',
-                                  'Include "/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/conf/extra.conf"',
+                                  'Include "/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/conf/extra.conf"',
                                   ''
                                 ],
                  'mpm' => 'prefork',
@@ -54,7 +54,7 @@ sub new {
                                                       }, 'Apache::TestRun' ),
                                       'port_counter' => 8529,
                                       'mpm' => 'prefork',
-                                      'version' => 'Apache/2.0.52',
+                                      'version' => 'Apache/2.0.54',
                                       'rev' => '2',
                                       'name' => 'localhost.localdomain:8529',
                                       'config' => $VAR1
@@ -117,16 +117,28 @@ sub new {
                                                            'modules/mod_expires.so'
                                                          ],
                                                          [
+                                                           'proxy_module',
+                                                           'modules/mod_proxy.so'
+                                                         ],
+                                                         [
+                                                           'extract_forwarded_module',
+                                                           'modules/mod_extract_forwarded.so'
+                                                         ],
+                                                         [
                                                            'perl_module',
                                                            'modules/mod_perl.so'
                                                          ],
                                                          [
                                                            'apreq_module',
-                                                           '/usr/lib/httpd/modules/mod_apreq.so'
+                                                           'modules/mod_apreq2.so'
                                                          ],
                                                          [
                                                            'ssl_module',
                                                            'modules/mod_ssl.so'
+                                                         ],
+                                                         [
+                                                           'rewrite_module',
+                                                           '/etc/httpd/modules/mod_rewrite.so'
                                                          ]
                                                        ]
                                      },
@@ -183,16 +195,28 @@ sub new {
     LoadModule expires_module "/etc/httpd/modules/mod_expires.so"
 </IfModule>
 ',
+                                 '<IfModule !mod_proxy.c>
+    LoadModule proxy_module "/etc/httpd/modules/mod_proxy.so"
+</IfModule>
+',
+                                 '<IfModule !mod_extract_forwarded.c>
+    LoadModule extract_forwarded_module "/etc/httpd/modules/mod_extract_forwarded.so"
+</IfModule>
+',
                                  '<IfModule !mod_perl.c>
     LoadModule perl_module "/etc/httpd/modules/mod_perl.so"
 </IfModule>
 ',
-                                 '<IfModule !mod_apreq.c>
-    LoadModule apreq_module "/usr/lib/httpd/modules/mod_apreq.so"
+                                 '<IfModule !mod_apreq2.c>
+    LoadModule apreq_module "/etc/httpd/modules/mod_apreq2.so"
 </IfModule>
 ',
                                  '<IfModule !mod_ssl.c>
     LoadModule ssl_module "/etc/httpd/modules/mod_ssl.so"
+</IfModule>
+',
+                                 '<IfModule !mod_rewrite.c>
+    LoadModule rewrite_module "/etc/httpd/modules/mod_rewrite.so"
 </IfModule>
 ',
                                  '<IfModule !mod_mime.c>
@@ -205,8 +229,8 @@ sub new {
                              'defines' => '',
                              'cgi_module_name' => 'mod_cgi',
                              'conf_dir' => '/etc/httpd/conf',
-                             't_conf_file' => '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/conf/httpd.conf',
-                             't_dir' => '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t',
+                             't_conf_file' => '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/conf/httpd.conf',
+                             't_dir' => '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t',
                              'cgi_module' => 'mod_cgi.c',
                              'target' => 'httpd',
                              'thread_module' => 'worker.c',
@@ -214,20 +238,20 @@ sub new {
                              'user' => 'adelton',
                              'access_module_name' => 'mod_access',
                              'auth_module_name' => 'mod_auth',
-                             'top_dir' => '/usr/local/home/adelton/RayApp-1.164/httpd-tests',
+                             'top_dir' => '/usr/local/home/adelton/RayApp-2.001/httpd-tests',
                              'httpd_conf' => '/etc/httpd/conf/httpd.conf',
                              'httpd' => '/usr/sbin/httpd',
                              'scheme' => 'http',
                              'ssl_module_name' => 'mod_ssl',
                              'port' => 8529,
                              'sbindir' => '/usr/sbin',
-                             't_conf' => '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/conf',
+                             't_conf' => '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/conf',
                              'servername' => 'localhost.localdomain',
                              'inherit_documentroot' => '/usr/local/www',
                              'proxy' => 'off',
                              'serveradmin' => 'support@skynet.cz',
                              'remote_addr' => '127.0.0.1',
-                             'perlpod' => '/usr/lib/perl5/5.8.5/pod',
+                             'perlpod' => '/usr/lib/perl5/5.8.6/pod',
                              'sslcaorg' => 'asf',
                              'php_module_name' => 'sapi_apache2',
                              'maxclients_preset' => 5,
@@ -235,42 +259,44 @@ sub new {
                              'ssl_module' => 'mod_ssl.c',
                              'auth_module' => 'mod_auth.c',
                              'access_module' => 'mod_access.c',
-                             't_logs' => '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/logs',
+                             't_logs' => '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/logs',
                              'minclients' => 1,
                              'maxclients' => 5,
                              'group' => 'adelton',
                              'apxs' => '/usr/sbin/apxs',
                              'maxclientsthreadedmpm' => 5,
                              'thread_module_name' => 'worker',
-                             'documentroot' => '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/htdocs',
-                             'serverroot' => '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t',
-                             'sslca' => '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/conf/ssl/ca',
+                             'documentroot' => '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/htdocs',
+                             'serverroot' => '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t',
+                             'sslca' => '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/conf/ssl/ca',
                              'perl' => '/usr/bin/perl',
                              'src_dir' => undef,
                              'proxyssl_url' => ''
                            },
                  'clean' => {
                               'files' => {
-                                           '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/conf/httpd.conf' => 1,
-                                           '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/conf/apache_test_config.pm' => 1,
-                                           '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/logs/apache_runtime_status.sem' => 1,
-                                           '/usr/local/home/adelton/RayApp-1.164/httpd-tests/t/conf/extra.conf' => 1
+                                           '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/logs/apache_runtime_status.sem' => 1,
+                                           '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/conf/apache_test_config.pm' => 1,
+                                           '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/conf/httpd.conf' => 1,
+                                           '/usr/local/home/adelton/RayApp-2.001/httpd-tests/t/conf/extra.conf' => 1
                                          }
                             },
                  'httpd_info' => {
-                                   'BUILT' => 'Nov 11 2004 10:31:42',
+                                   'BUILT' => 'Jan 17 2006 06:36:00',
                                    'MODULE_MAGIC_NUMBER_MINOR' => '9',
-                                   'VERSION' => 'Apache/2.0.52',
+                                   'VERSION' => 'Apache/2.0.54',
                                    'MODULE_MAGIC_NUMBER' => '20020903:9',
                                    'MODULE_MAGIC_NUMBER_MAJOR' => '20020903'
                                  },
                  'modules' => {
                                 'mod_env.c' => '/etc/httpd/modules/mod_env.so',
-                                'mod_apreq.c' => '/usr/lib/httpd/modules/mod_apreq.so',
+                                'mod_proxy.c' => '/etc/httpd/modules/mod_proxy.so',
                                 'core.c' => 1,
+                                'mod_extract_forwarded.c' => '/etc/httpd/modules/mod_extract_forwarded.so',
                                 'http_core.c' => 1,
                                 'mod_setenvif.c' => '/etc/httpd/modules/mod_setenvif.so',
                                 'mod_access.c' => '/etc/httpd/modules/mod_access.so',
+                                'mod_apreq2.c' => '/etc/httpd/modules/mod_apreq2.so',
                                 'mod_dir.c' => '/etc/httpd/modules/mod_dir.so',
                                 'prefork.c' => 1,
                                 'mod_cgi.c' => '/etc/httpd/modules/mod_cgi.so',
@@ -279,6 +305,7 @@ sub new {
                                 'mod_expires.c' => '/etc/httpd/modules/mod_expires.so',
                                 'mod_alias.c' => '/etc/httpd/modules/mod_alias.so',
                                 'mod_status.c' => '/etc/httpd/modules/mod_status.so',
+                                'mod_rewrite.c' => '/etc/httpd/modules/mod_rewrite.so',
                                 'mod_auth.c' => '/etc/httpd/modules/mod_auth.so',
                                 'mod_log_config.c' => '/etc/httpd/modules/mod_log_config.so',
                                 'mod_ssl.c' => '/etc/httpd/modules/mod_ssl.so',

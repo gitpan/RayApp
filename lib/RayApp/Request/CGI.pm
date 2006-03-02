@@ -2,7 +2,7 @@
 package RayApp::Request::CGI;
 use strict;
 use CGI ();
-use IO::ScalarArray;
+use IO::ScalarArray ();
 
 use base 'RayApp::Request';
 
@@ -13,7 +13,7 @@ sub new {
 	return $singleton if defined $singleton;
 	
 	my @stdin = <>;
-	tie *STDIN, "IO::ScalarArray", \@stdin;
+	tie *STDIN, 'IO::ScalarArray', \@stdin;
 	my $q = new CGI;
 	untie *STDIN;
 	my $self = {
