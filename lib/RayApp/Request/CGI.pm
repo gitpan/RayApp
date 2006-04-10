@@ -149,5 +149,16 @@ sub upload {
 	}
 }
 
+sub raw_cookie {
+	my $self = shift;
+	my $q = $self->{'q'};
+	return $q->raw_cookie($_[0]);
+}
+sub cookie {
+	my $self = shift;
+	my $q = $self->{'q'};
+	return $q->cookie($_[0]);
+}
+
 1;
 

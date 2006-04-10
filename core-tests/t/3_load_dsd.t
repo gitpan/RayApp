@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w -CSAD
 
-use Test::More tests => 274;
+use Test::More tests => 280;
 use bytes;
 use Cwd ();
 use utf8;
@@ -252,6 +252,20 @@ my $out_content = <<'EOF';
 EOF
 is($dsd->out_content, $out_content, 'Checking the current content');
 
+
+ok($dsd = $rayapp->load_dsd("complex_param1.xml"),
+	'Loading correct DSD t/complex_param1.xml');
+is($rayapp->errstr, undef, 'Checking that there was no error');
+
+like($dsd->uri, '/^file:.*complex_param1.xml$/', 'Checking URI of the DSD');
+is($dsd->md5_hex, 'f8cdb7a4e520d3d8bff857d0ee27e804',
+	'Checking MD5 of the DSD');
+is("@{[ sort keys %{ $dsd->params } ]}", 'action id ns',
+	'Checking parameters found');
+$params = $dsd->params;
+is("@{[ map { qq!$_:$params->{$_}{type}! } sort keys %$params ]}",
+	"action:string id:int ns:struct",
+	'Checking parameter types');
 
 
 
@@ -1773,7 +1787,7 @@ ok($dsd = $rayapp->load_uri('nonxml.xml'),
 is($rayapp->errstr, undef, 'Check errstr');
 is($dsd->content, "This file is not XML.\n", 'Test the text content');
 
-is(scalar keys %{ $rayapp->{uris} }, 36,
+is(scalar keys %{ $rayapp->{uris} }, 37,
 	'Total number of distinct URIs processed');
 
 

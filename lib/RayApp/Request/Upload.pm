@@ -8,9 +8,6 @@ sub new {
 sub filename {
 	shift->{filename};
 }
-# sub filehandle {
-#	shift->{filehandle};
-# }
 sub size {
 	my $self = shift;
 	length($self->{content});

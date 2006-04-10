@@ -3,6 +3,7 @@ use strict;
 use 5.008001;
 
 use ExtUtils::MakeMaker;
+use Apache::TestMM;
 
 my $apache_tests_default = 'yes';
 eval 'use Apache2';
@@ -73,6 +74,9 @@ WriteMakefile(
 	NAME => 'RayApp-Apache-Tests',
 	test => {
 		TESTS => 't/TEST',
-	}
+	},
+        clean => {
+                FILES => 't/TEST t/htdocs/ray1 t/htdocs/ray2 t/conf/apache_test_config.pm t/conf/extra.conf t/conf/httpd.conf t/logs t/htdocs/ray/changing.mpl',
+        },
 );
 

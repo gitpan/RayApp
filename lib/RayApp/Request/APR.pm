@@ -255,5 +255,24 @@ sub upload {
 	}
 }
 
+use Apache2::Cookie;
+sub raw_cookie {
+	my $self = shift;
+	my $request = $self->{'request'};
+	my $j = Apache2::Cookie::Jar->new($request);
+	return $j->cookies($_[0]);
+}
+sub cookie {
+	my $self = shift;
+	my $request = $self->{'request'};
+	my $j = Apache2::Cookie::Jar->new($request);
+	if (wantarray) {
+		return map { $_->value } $j->cookies($_[0]);
+	} else {
+		my $c = $j->cookies($_[0]);
+		return ( defined $c ? $c->value : () );
+	}
+}
+
 1;
 

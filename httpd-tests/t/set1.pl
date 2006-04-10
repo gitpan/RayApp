@@ -25,9 +25,9 @@ if ($main::location =~ /storable/) {
 	}
 }
 
-plan tests => 98;
+plan tests => 123;
 
-my $VERSION = '2.002';
+my $VERSION = '2.004';
 
 my $hostport = Apache::TestRequest::hostport;
 
@@ -486,6 +486,92 @@ if ($changing_ok eq 'skip') {
 } else {
 	ok(0, "Some strange problem with the test suite.");
 }
+
+}
+
+SKIP: {
+
+skip "Cookies are not passed through proxy.", 25 if $main::location =~ /proxy/;
+
+use HTTP::Cookies;
+my $jar = new HTTP::Cookies;
+$ua->cookie_jar($jar);
+
+ok(1, $uri = "http://$hostport/$main::location/cookies.xml");
+$request = new HTTP::Request GET => $uri;
+$res = $ua->request($request);
+ok($res, 'Did we get HTTP::Response?');
+is($res->code, 200, "Test the response code");
+is($res->header('Content-Type'), 'text/xml', 'The data should be text/xml');
+
+$body = $res->content;
+is($body, <<EOF, "GET /$main::location/cookies.xml should process the body of the request");
+<?xml version="1.0"?>
+<cookies>
+	<session>no session</session>
+</cookies>
+EOF
+
+ok(1, $uri = "http://$hostport/$main::location/cookies.xml?login=123");
+$request = new HTTP::Request GET => $uri;
+$res = $ua->request($request);
+ok($res, 'Did we get HTTP::Response?');
+is($res->code, 200, "Test the response code");
+is($res->header('Content-Type'), 'text/xml', 'The data should be text/xml');
+
+$body = $res->content;
+is($body, <<EOF, "GET /$main::location/cookies.xml should process the body of the request");
+<?xml version="1.0"?>
+<cookies>
+	<login>123</login>
+	<session>logged in 123</session>
+</cookies>
+EOF
+
+ok(1, $uri = "http://$hostport/$main::location/cookies.xml");
+$request = new HTTP::Request GET => $uri;
+$res = $ua->request($request);
+ok($res, 'Did we get HTTP::Response?');
+is($res->code, 200, "Test the response code");
+is($res->header('Content-Type'), 'text/xml', 'The data should be text/xml');
+
+$body = $res->content;
+is($body, <<EOF, "GET /$main::location/cookies.xml should process the body of the request");
+<?xml version="1.0"?>
+<cookies>
+	<session>running 123</session>
+</cookies>
+EOF
+
+ok(1, $uri = "http://$hostport/$main::location/cookies.xml?logout=1");
+$request = new HTTP::Request GET => $uri;
+$res = $ua->request($request);
+ok($res, 'Did we get HTTP::Response?');
+is($res->code, 200, "Test the response code");
+is($res->header('Content-Type'), 'text/xml', 'The data should be text/xml');
+
+$body = $res->content;
+is($body, <<EOF, "GET /$main::location/cookies.xml should process the body of the request");
+<?xml version="1.0"?>
+<cookies>
+	<session>logged out 123</session>
+</cookies>
+EOF
+
+ok(1, $uri = "http://$hostport/$main::location/cookies.xml");
+$request = new HTTP::Request GET => $uri;
+$res = $ua->request($request);
+ok($res, 'Did we get HTTP::Response?');
+is($res->code, 200, "Test the response code");
+is($res->header('Content-Type'), 'text/xml', 'The data should be text/xml');
+
+$body = $res->content;
+is($body, <<EOF, "GET /$main::location/cookies.xml should process the body of the request");
+<?xml version="1.0"?>
+<cookies>
+	<session>no session</session>
+</cookies>
+EOF
 
 }
 

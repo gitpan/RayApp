@@ -1,14 +1,16 @@
 
+use strict;
+use warnings FATAL => 'all';
+
 package RayApp::DSD;
 
-use strict;
-use warnings;
+use RayApp::XML ();
+use RayApp::Request::Params ();
+use Encode ();
 
-$RayApp::DSD::VERSION = '1.160';
-
-use RayApp::XML;
 use base 'RayApp::XML';
-use Encode;
+
+$RayApp::DSD::VERSION = '2.004';
 
 sub new {
 	my ($class, $xml) = @_;
@@ -407,14 +409,17 @@ sub remove_children_from_leaf {
 }
 
 sub process_param_element {
-	my ($self, $node, $parent, $ln) = @_;
+	my ($self, $node, $parent, $ln, $param_parent) = @_;
 	my %attributes = ();
 	for my $attr ( $node->attributes ) {
 		$attributes{ $attr->nodeName } = $attr->getValue;
 	}
 	my %o = ( ln => $ln );
 	my $myname;
-	if (defined $attributes{'prefix'}) {
+	if ($node->nodeName ne '_param') {
+		$o{'name'} = $node->nodeName;
+		$myname = $o{'name'};
+	} elsif (defined $attributes{'prefix'}) {
 		$o{'prefix'} = delete $attributes{'prefix'};
 		$myname = "with prefix $o{'prefix'}";
 	} elsif (defined $attributes{'name'}) {
@@ -450,10 +455,30 @@ sub process_param_element {
 		}
 		$self->{'paramprefix'}{$o{'prefix'}} = { %o };
 	} elsif (defined $o{'name'}) {
-		if (defined $self->{'param'}{$o{'name'}}) {
+		if (not defined $param_parent) {
+			if (not defined $self->{'param'}) {
+				$self->{'param'} = {};
+			}
+			$param_parent = $self->{'param'};
+		}
+		if (defined $param_parent->{$o{'name'}}) {
 			die "Duplicate specification of parameter $o{'name'} at line $ln, previous at line $self->{'param'}{$o{'name'}}{'ln'}\n";
 		}
-		$self->{'param'}{$o{'name'}} = { %o };
+		$param_parent->{$o{'name'}} = { %o };
+
+		my $i = 0;
+		for my $child ($node->childNodes) {
+			if ($child->nodeType == 1) {
+				if (defined $node->getAttributeNode('type')) {
+					die "Parametr $o{'name'} at line $ln has type $o{type}, but it is structural parameter\n";
+				}
+				if (not defined $param_parent->{$o{'name'}}{children}) {
+					$param_parent->{$o{'name'}}{type} = 'struct';
+					$param_parent->{$o{'name'}}{children} = {};
+				}
+				process_param_element($self, $child, $node, $child->line_number, $param_parent->{$o{'name'}}{children});
+			}
+		}
 	}
 	return;
 }
@@ -841,24 +866,18 @@ sub clone_node {
 sub validate_parameters {
 	my $self = shift;
 	$self->{errstr} = '';
-	my %params;
 
-	if (defined $_[0] and ref $_[0]) {
-		if (eval { $_[0]->can("param") } and not $@) {
-			for my $name ($_[0]->param) {
-				$params{$name} = [ $_[0]->param($name) ];
-			}
-		} else {
-			%params = %{ $_[0] };
-		}
+	my $params;
+	if (ref $_[0] and eval { $_[0]->can("param") } and not $@) {
+		$params = $_[0];
 	} else {
-		while (@_) {
-			my ($k, $v) = (shift, shift);
-			push @{ $params{$k} }, $v;
-		}
+		$params = new RayApp::Request::Params($_[0]);
 	}
 
-	for my $k (sort keys %params) {
+	my (%structured_values, @structured_queue);
+
+	PARAMETERS:
+	for my $k ($params->param) {
 		my $check = $self->{param}{$k};
 		if (not defined $check) {
 			my @prefixes;
@@ -872,50 +891,122 @@ sub validate_parameters {
 				}
 			}
 		}
+		my @values = $params->param($k);
 		my $showname = 'undef';
-		if (defined $params{$k}) {
-			if (@{ $params{$k} } > 1) {
-				$showname = '['
-					. join(', ', map {
-						defined $_
-						? "'$_'"
-						: 'undef' } @{ $params{$k} })
-					. ']';
-			} else {
-				$showname = ( defined $params{$k}[0]
-						? "'$params{$k}[0]'"
-						: 'undef' );
+		if (@values > 1) {
+			$showname = '[' . join(', ', map { defined $_ ? "'$_'" : 'undef' } @values ) . ']';
+		} else {
+			$showname = ( defined $values[0] ? "'$values[0]'" : 'undef' );
+		}
+
+		if (not defined $check) {
+			my $processk = $k;
+			my $sname = '';
+			my $target = \%structured_values;
+			while ($processk ne '') {
+				if (not $processk =~ s!^([^[/]+)(?:(?:\[(-?\d+)\])?/|$)!!) {
+					$self->{errstr} .= "Parameter '$k' does not match structure parameter name at '$processk'\n";
+					next PARAMETERS;
+				}
+				my ($segment, $index) = ($1, $2);
+				if (not defined $check) {
+					if (not defined($check = $self->{param}{$segment})
+						or $check->{type} ne 'struct') {
+						if ($segment eq $k) {
+							$self->{errstr} .= "Unknown parameter '$k'=$showname\n";
+						} else {
+							$self->{errstr} .= "Unknown structure parameter '$segment' for parameter '$k'\n";
+						}
+						next PARAMETERS;
+					}
+				} else {
+					if (not defined $check->{children}) {
+						$self->{errstr} .= "Structure parameter '$sname' has no children for parameter '$k'\n";
+						next PARAMETERS;
+					}
+					if (not defined $check->{children}{$segment}) {
+						$self->{errstr} .= "Structure parameter '$sname' has no child '$segment' for parameter '$k'\n";
+						next PARAMETERS;
+					}
+					$check = $check->{children}{$segment};
+				}
+				if ($sname ne '') {
+					$sname .= '/';
+				}
+				$sname .= $segment;
+				if (defined $index and $index ne '' and $check->{multiple} ne 'yes') {
+					$self->{errstr} .= "Parameter '$sname' comes as multiple in parameter '$k'\n";
+					next PARAMETERS;
+				} elsif (not defined $index and $check->{multiple} eq 'yes') {
+					$self->{errstr} .= "Parameter '$sname' does not come as multiple in parameter '$k'\n";
+					next PARAMETERS;
+				}
+				if ($processk eq '') {
+					if ($segment ne $k) {
+						if ($check->{multiple} eq 'yes') {
+							$target->{$segment}{$index} = \@values;
+						} else {
+							$target->{$segment} = \@values;
+						}
+					}
+				} else {
+					if (not defined $target->{$segment}) {
+						$target->{$segment} = {};
+						if ($check->{multiple} eq 'yes') {
+							push @structured_queue, $target, $segment;
+						}
+					}
+					$target = $target->{$segment};
+					if ($check->{multiple} eq 'yes') {
+						if (not defined $target->{$index}) {
+							$target->{$index} = {};
+						}
+						$target = $target->{$index};
+					}
+				}
 			}
 		}
-		if (not defined $check) {
-			$self->{errstr} .= "Unknown parameter '$k'=$showname\n";
-		} elsif (@{ $params{$k} } > 1 and $check->{'multiple'} ne 'yes') {
-			$self->{errstr} .= "Parameter '$k' has multiple values $showname\n";
-		} elsif (defined $params{$k} and @{ $params{$k} }) {
-			if ($check->{'type'} eq 'int') {
-				my @bad = grep {
-					defined $_ and not /^[+-]?\d+$/
-					} @{ $params{$k} };
-				if (@bad) {
-					my $showname = '['
-						. join(', ', map "'$_'", @bad)
-						. ']';
-					$self->{errstr} .= "Parameter '$k' has non-integer value $showname\n";
+
+		if (@values) {
+			if (@values > 1 and $check->{'multiple'} ne 'yes') {
+				$self->{errstr} .= "Parameter '$k' has multiple values $showname\n";
+			} elsif (defined $check->{'type'}) {
+				my @bad;
+				if ($check->{'type'} eq 'int') {
+					@bad = grep {
+						defined $_ and not /^[+-]?\d+$/
+					} @values;
+					if (@bad) {
+						$self->{errstr} .= "Parameter '$k' has non-integer value ";
+					}
+				} elsif ($check->{'type'} eq 'num') {
+					@bad = grep {
+						defined $_ and not /^[+-]?\d*\.\d+$/
+					} @values;
+					if (@bad) {
+						$self->{errstr} .= "Parameter '$k' has non-numeric value ";
+					}
 				}
-			} elsif ($check->{'type'} eq 'num') {
-				my @bad = grep {
-					defined $_ and not /^[+-]?\d*\.\d+$/
-					} @{ $params{$k} };
 				if (@bad) {
-					my $showname = '['
-						. join(', ', map "'$_'", @bad)
-						. ']';
-					$self->{errstr} .= "Parameter '$k' has non-numeric value $showname\n";
+					$self->{errstr} .= '[' . join(', ', map "'$_'", @bad) . ']' . "\n";
 				}
 			}
 		}
 	}
+	# use Data::Dumper; print STDERR Dumper \%structured_values, \%structured_values_indexes;
 	if ($self->{errstr} eq '') {
+		if (keys %structured_values) {
+			for (my $i = 0; $i < @structured_queue; $i += 2) {
+				my ($target, $key) = @structured_queue[$i, $i + 1];
+				$target->{$key} = [
+					map { $target->{$key}{$_} } sort { $a <=> $b } keys %{ $target->{$key} }
+					];
+			}
+			# use Data::Dumper; print STDERR Dumper \%structured_values;
+			for my $k (sort keys %structured_values) {
+				$params->param($k, $structured_values{$k});
+			}
+		}
 		$self->{errstr} = undef;
 		return 1;
 	}
@@ -932,4 +1023,201 @@ sub serialize_style {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+RayApp::DSD
+
+=head1 DESCRIPTION
+
+Even if this module implements a couple of methods, it will probably
+not be used directly by the application programmer. Therefore, we
+will just focus on the Data Structure Description (DSD) syntax
+in this man page.
+
+The data structure description file is a XML file. Its elements either
+form the skeleton of the output XML and are copied to the output, or
+specify placeholders for application data, or input parameters that
+the application accepts.
+
+=head2 Parameters
+
+Parameters are denoted by the B<_param> elements. They take the
+following attributes:
+
+=over 4
+
+=item name
+
+Name of the parameter. For example,
+
+	<_param name="id"/>
+
+specifies parameter B<id>.
+
+=item prefix
+
+Prefix of the parameter. All parameters with this prefix will be
+allowed. Element
+
+	<_param prefix="search-"/>
+
+allows both B<search-23> and B<search-xx> parameters.
+
+=item multiple
+
+By default, only one parameter of each name is allowed. However,
+specifying B<multiple="yes"> makes it possible to call the application
+with multiple parameters of the same name:
+
+	<_param name="id" multiple="yes"/>
+	application.cgi?id=34;id=45
+
+=item type
+
+A simple type checking is possible. Available types are B<int>,
+B<integer> for integer values, B<num> and B<number> for numerical
+values, B<struct> for more complex data structures, and
+B<string> for generic string values. The value B<string> is the
+default if the <_param> element does not have any children, otherwise
+the B<struct> is the default.
+
+Note that the type (int, num) on parameters should only be used for
+input data that will never be directly entered by the user, either for
+machine-to-machine communication, or for values in HTML forms that
+come from menus or checkboxes. If you need to check that the user
+specified their age as a number in a textfield, use the type string
+and application code to retrieve the correct data or return with
+request for more correct input.
+
+=back
+
+=head2 Typerefs
+
+Any child element with an attribute B<typeref> is replaced by document
+fragment specified by this attribute. Absolute or relative URL is
+allowed, with possibly fragment information after a B<#> (hash)
+character. For example:
+
+	<root>
+		<invoice typeref="invoice.dsd#inv"/>
+		<adress typeref="address.xml"/>
+	</root>
+
+=head2 Data placeholders
+
+Any element with no children, element with attributes B<type>,
+B<multiple> or with name B<_data> are data placeholders that will
+have the application data binded to them. The allowed attributes
+of placeholders are:
+
+=over 4
+
+=item type
+
+Type of the placeholder. Except the scalar types which are the same as
+for input parameters, B<hash> or B<struct> values can be used to denote
+nested structure.
+
+=item mandatory
+
+By default, no data needs to be returned by the application for the
+placeholder. When set to B<yes>, the value will be required.
+
+=item id
+
+An element can be assigned a unique identification which can be then
+referenced by B<typeref> from other parts of the same DSD or from
+remote DSD's.
+
+=item multiple
+
+When this attribute is specified, the value is expected to be an
+aggregate and either the currect DSD element or its child is repeated
+for each value.
+
+=over 4
+
+=item list
+
+An array is expected as the value. The placeholder element
+will be repeated.
+
+=item listelement
+
+An array is expected, the child of the placeholder will be repeated
+for each of the array's element.
+
+=item hash
+
+An associative array is expected and placeholder element will
+be repeated for all values of the array. The key of individual values
+will be in an attribute B<id> or in an attribute named in DSD with
+attribute B<idattr>.
+
+=item hashelement
+
+The same as B<hash>, except that the child of the placeholder will be
+repeated.
+
+=back
+
+=item idattr
+
+Specifies the name of attribute which will hold keys of
+individual values for multiple values B<hash> and B<hashelement>,
+the default is B<id>.
+
+=item hashorder
+
+Order of elements for values binded using multiple values B<hash> or
+B<hashelement>. Possible values are B<num>, B<string>, and
+(the default) B<natural>.
+
+=item cdata
+
+When set to yes, the scalar content of this element will be
+output as a CDATA section.
+
+=back
+
+=head2 Conditions
+
+The non-placeholder elements can have one of the B<if>, B<ifdef>,
+B<ifnot> or B<ifnotdef> attributes that specify a top-level value
+(from the data hash) that will be checked for presence or its value.
+If the condition is not matched, this element with all its children
+will be removed from the output stream.
+
+=head2 Attributes
+
+By default, only the special DSD attributes are allowed. However, with
+an attribute B<attrs> a list of space separated attribute names can be
+specified. These will be preserved on output.
+
+With attribute B<xattrs>, a rename of attributes is possible. The
+value is space separated list of space separated pairs of attribute
+names.
+
+=head2 Application name
+
+The root element of the DSD can hold an B<application> attribute with
+a URL (file name) of the application which should provide the data for
+the DSD.
+
+=head1 SEE ALSO
+
+RayApp(3)
+
+=head1 AUTHOR
+
+Copyright (c) Jan Pazdziora 2001--2006
+
+=head1 VERSION
+
+This documentation is believed to describe accurately B<RayApp>
+version 2.004.
+
 

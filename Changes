@@ -1,8 +1,18 @@
 
 This is change file for RayApp.
 
+2.004 Sun Apr 9 18:52:58 CEST 2006
+	Support for cookies.
+	Man pages added.
+
+2.003 Mon Mar 27 21:46:17 CEST 2006
+	Support for structured parameters.
+
+2.002 Wed Mar 1 17:21:00 CET 2006
+	Upgraded to support mod_perl 2.0.
+
 2.001 Mon Oct 31 11:58:56 CET 2005
-	Upgraded to support mod_perl 2.
+	Upgraded to support mod_perl 1.99.
 
 1.166 Apr 23 2005
 	Added support for plain transformation of XML (to HTML).

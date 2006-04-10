@@ -429,11 +429,13 @@ ok($dsd = $rayapp->load_dsd_string('<?xml version="1.0"?>
 '), 'Load DSD with parameters');
 is($rayapp->errstr, undef, 'Errstr should not be set');
 is($dsd->validate_parameters(
+	[
 	'jezek' => 'krtek',
 	'xx-1' => '14',
 	'xx-2' => 34,
 	'int' => -56,
 	'num' => '+13.6',
+	]
 	), 1,
 	'Check valid parameters, should not fail.');
 is($dsd->errstr, undef, 'Errstr should not be set');
